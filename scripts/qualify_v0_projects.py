@@ -39,6 +39,9 @@ assert!(!parity::is_even(-3), "parity regression"); }
         '"public.rs","-o","/tmp/public"],check=True); '
         'subprocess.run(["/tmp/public"],check=True)'
     )
+    public_rust = public_rust.replace(
+        "linker=/usr/bin/cc", "linker=" + str(Path("/usr/bin/cc").resolve())
+    )
     projects = []
     for label in ("python", "rust"):
         repo = output / ("project-" + label)

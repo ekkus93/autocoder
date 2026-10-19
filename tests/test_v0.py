@@ -217,7 +217,7 @@ def fake_model(seen, *, malicious=False):
     async def transport(endpoint, model, messages, budget, **options):
         seen.append(messages)
         budget.consume(request_tokens=10, output_tokens=10)
-        body = json.loads(messages[-1]["content"])
+        body = json.loads(messages[1]["content"])
         evidence = body["evidence"]
         phase = body["phase"]
         if phase == "ORIENT":
@@ -243,6 +243,8 @@ def fake_model(seen, *, malicious=False):
                 "checks": ["greeting"],
             }
             message = {"content": json.dumps(value)}
+        elif any(m["role"] == "tool" for m in messages):
+            message = {"content": "Ready for deterministic verification"}
         elif evidence["files"]["greeting.py"]["sha256"] == digest(SOURCE.encode()):
             new = 'def greet(name):\n    return "Hello, Ada!"\n' if malicious else FIXED
             message = {
@@ -292,8 +294,8 @@ def test_full_loop_keeps_private_cases_out_of_prompts_and_original_checkout(tmp_
         assert result["acceptance"]["tests"] == "pass"
         assert result["acceptance"]["human_acceptance"] == "not_run"
         assert "PrivateToken731" not in json.dumps(seen)
-        assert all(len(messages) == 2 for messages in seen)
-        assert [json.loads(m[-1]["content"])["phase"] for m in seen] == [
+        assert [len(messages) for messages in seen] == [2, 2, 2, 4]
+        assert [json.loads(m[1]["content"])["phase"] for m in seen] == [
             "ORIENT",
             "REPRODUCE_AND_PLAN",
             "IMPLEMENT",
@@ -530,13 +532,15 @@ def test_one_fresh_replan_after_two_public_failures(tmp_path):
         ordinary = fake_model(seen)
 
         async def transport(endpoint, model, messages, budget, **kwargs):
-            body = json.loads(messages[-1]["content"])
+            body = json.loads(messages[1]["content"])
             phase = body["phase"]
             if phase in {"IMPLEMENT", "REPAIR"}:
                 source = body["evidence"]["files"]["greeting.py"]
                 old = source["source"]
                 replacement = None
-                if old == SOURCE.rstrip():
+                if any(m["role"] == "tool" for m in messages):
+                    replacement = None
+                elif old == SOURCE.rstrip():
                     replacement = 'def greet(name):\n    return "Hello, Bob!"\n'
                 elif phase == "REPAIR" and "Bob" in old:
                     replacement = 'def greet(name):\n    return "Hello, Carol!"\n'

@@ -1,11 +1,13 @@
 """One deterministic phase loop; models propose changes, checks decide completion."""
 
 import asyncio
+import json
 from pathlib import Path
 
 from autocoder.budget import BudgetExhausted
 from autocoder.execution import SandboxUnavailable
 from autocoder.inference import InferenceError
+from autocoder.protocol import digest
 from autocoder.provenance import inventory, request_json
 from autocoder.v0.gateway import ToolGateway
 from autocoder.v0.journal import NeedsUser
@@ -71,17 +73,18 @@ class Coordinator:
             v["truncated"] or (v["total_lines"] > 120 and not v["focused_symbol"])
             for v in evidence["files"].values()
         ):
+            messages = self.builder.build(
+                self.phase,
+                task + "\nLocate relevant code using bounded read/search tools. "
+                "When enough source is retrieved, reply without tools.",
+                evidence,
+            )
             for _ in range(4):
-                messages = self.builder.build(
-                    self.phase,
-                    task + "\nLocate relevant code using bounded read/search tools. "
-                    "When enough source is retrieved, reply without tools.",
-                    evidence,
-                )
                 message = await self.model.request(messages, tools=self.gateway.tools(), output=768)
                 calls = message.get("tool_calls") or []
                 if not calls:
                     break
+                messages.append(dict(message, role="assistant"))
                 retrieved = []
                 for call in calls:
                     function = call.get("function", {})
@@ -89,6 +92,13 @@ class Coordinator:
                         function.get("name"), function.get("arguments")
                     )
                     retrieved.append(observation)
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_name": function.get("name"),
+                            "content": json.dumps(observation),
+                        }
+                    )
                     if (
                         isinstance(observation, dict)
                         and "path" in observation
@@ -159,31 +169,55 @@ class Coordinator:
 
     async def implement(self, task, plan, failure):
         self.gateway.enter(self.phase, plan.paths)
-        observation = failure
+        instruction = (
+            task + "\nUse apply_edit with exact text and current hash. "
+            "Retrieve source if needed. Fix every declared file. "
+            "When ready for verification, reply without tools."
+        )
+        messages = self.builder.build(
+            self.phase,
+            instruction,
+            self.gateway.evidence(plan.paths, request=task),
+            plan.model_dump(),
+            failure,
+        )
+        completed = []
         for _ in range(self.project.phase_tool_calls + 1):
             self.workspace.assert_expected()
-            evidence = self.gateway.evidence(plan.paths, request=task)
-            evidence["last_observation"] = observation
-            messages = self.builder.build(
-                self.phase,
-                task
-                + "\nUse apply_edit with exact text and current hash. Retrieve source if needed. "
-                "Fix every declared file. When ready for verification, reply without tools.",
-                evidence,
-                plan.model_dump(),
-                failure,
+            rendered = len(
+                json.dumps({"messages": messages, "tools": self.gateway.tools()}).encode()
             )
+            if rendered + 2560 > self.project.context * 0.75:
+                evidence = self.gateway.evidence(plan.paths, request=task)
+                evidence["completed_operation_summaries"] = completed[-4:]
+                messages = self.builder.build(
+                    self.phase, instruction, evidence, plan.model_dump(), failure
+                )
+                self.journal.emit("CONTEXT_RESET", data={"reason": "75 percent context threshold"})
             message = await self.model.request(messages, tools=self.gateway.tools(), output=1536)
             calls = message.get("tool_calls") or []
             if not calls:
                 return
-            observations = []
+            messages.append(dict(message, role="assistant"))
             for call in calls:
                 function = call.get("function", {})
-                observations.append(
-                    self.gateway.dispatch(function.get("name"), function.get("arguments"))
+                observation = self.gateway.dispatch(function.get("name"), function.get("arguments"))
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_name": function.get("name"),
+                        "content": json.dumps(observation),
+                    }
                 )
-            observation = observations
+                completed.append(
+                    {
+                        "tool": function.get("name"),
+                        "result_sha256": digest(json.dumps(observation, sort_keys=True).encode()),
+                        "error": observation.get("error")
+                        if isinstance(observation, dict)
+                        else None,
+                    }
+                )
         raise BudgetExhausted("implementation step cap")
 
     def reproduction(self, baseline):

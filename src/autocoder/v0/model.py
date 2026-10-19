@@ -64,6 +64,7 @@ class ModelBackend:
         self.transport = transport
 
     async def request(self, messages, *, schema=None, tools=None, output=1024):
+        messages = json.loads(json.dumps(messages))
         used = self.budget.snapshot()
         allowance = min(output, self.project.limits.output_tokens - used.output_tokens)
         if allowance <= 0:

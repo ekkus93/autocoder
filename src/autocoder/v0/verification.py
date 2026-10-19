@@ -183,7 +183,7 @@ class VerificationRunner:
                             "/toolchain/bin/rustc",
                             "--edition=2021",
                             "-C",
-                            "linker=/usr/bin/cc",
+                            "linker=" + str(Path("/usr/bin/cc").resolve()),
                             "autocoder-driver.rs",
                             "-o",
                             "oracle-program",
