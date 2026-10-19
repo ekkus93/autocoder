@@ -77,6 +77,9 @@ def test_atomic_edit_crash_reconciles_without_duplicate_mutation(tmp_path):
         with pytest.raises(PowerLoss):
             workspace.edit(edit, after_replace=crash)
         assert not any(r["kind"] == "EDIT_OUTCOME" for r in journal.read())
+        intent = next(r for r in journal.read() if r["kind"] == "EDIT_INTENT")
+        assert intent["observed_hashes"] == {}
+        assert intent["data"]["proposed_hashes"]["greeting.py"] == digest(FIXED.encode())
         restored = Workspace(project, journal)
         restored.restore()
         assert (restored.root / "greeting.py").read_text() == FIXED

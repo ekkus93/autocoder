@@ -233,8 +233,8 @@ class Workspace:
             "EDIT_INTENT",
             operation_id=operation,
             expected={edit.path: before},
-            observed={edit.path: after},
             evidence_ref=artifact,
+            data={"proposed_hashes": {edit.path: after}},
         )
         # Directory-relative descriptors prevent a swapped parent link from redirecting the write.
         parent = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -290,7 +290,8 @@ class Workspace:
                 continue
             name, before = next(iter(row["expected_hashes"].items()))
             _, data = safe_file(self.root, name)
-            actual, after = digest(data), row["observed_hashes"][name]
+            proposed = row["data"].get("proposed_hashes", row["observed_hashes"])
+            actual, after = digest(data), proposed[name]
             if actual not in {before, after}:
                 raise NeedsUser("Ambiguous edit changed by another writer; no replay performed")
             temporary = self.root / Path(name).parent / (".autocoder-" + row["operation_id"])
