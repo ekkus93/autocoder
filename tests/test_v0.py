@@ -690,3 +690,20 @@ def test_private_oracle_imports_candidate_before_approved_runtime(tmp_path):
                     )
                 ],
             )
+
+
+def test_control_character_paths_and_coerced_orientation_fields_are_rejected():
+    from autocoder.v0.schema import Orientation, relative
+
+    for code in [0, 1, 31, 127]:
+        with pytest.raises(ValueError):
+            relative("src/a" + chr(code) + "b.py")
+    assert relative("src/模型.py") == "src/模型.py"
+    value = {
+        "base_sha": "a" * 40,
+        "findings": [
+            {"path": "module.py", "sha256": "b" * 64, "start": "1", "end": 2, "summary": "source"}
+        ],
+    }
+    with pytest.raises(ValueError):
+        Orientation.model_validate_json(json.dumps(value))

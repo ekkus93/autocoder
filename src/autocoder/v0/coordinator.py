@@ -142,6 +142,8 @@ class Coordinator:
         def validate(plan):
             if plan.base_sha != self.workspace.base_sha:
                 raise ValueError("Plan cites a stale revision")
+            if len(plan.paths) != len(set(plan.paths)) or len(plan.checks) != len(set(plan.checks)):
+                raise ValueError("Plan paths and check names must be unique")
             if not set(plan.paths) <= set(evidence["files"]) or not all(
                 self.project.can_edit(p) for p in plan.paths
             ):

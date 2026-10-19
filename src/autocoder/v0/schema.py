@@ -11,7 +11,7 @@ from autocoder.protocol import Limits, digest
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, allow_inf_nan=False)
 
 
 class Outcome(StrEnum):
@@ -53,7 +53,7 @@ def relative(name: str) -> str:
         or len(name) > 240
         or name.startswith("/")
         or any(part in {"", ".", "..", ".git"} for part in name.split("/"))
-        or any(ord(c) < 32 for c in name)
+        or any(ord(c) < 32 or ord(c) == 127 for c in name)
         or "\\" in name
     ):
         raise ValueError("Expected a normalized relative project path")
