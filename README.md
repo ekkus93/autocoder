@@ -1,8 +1,9 @@
 # autocoder
 
 Local-first coding-loop experiments using Python, `uv`, Git and Ollama. This is
-a Stage 0 benchmark harness plus an early persistent task runner. Full v0 acceptance
-is still pending the independent-server acceptance case. Scope and
+a Stage 0 benchmark harness plus a locally verified persistent v0 task runner.
+The owner deferred the two-server test because only one endpoint is available;
+two projects sharing that endpoint are verified. Scope and
 dependency gates are defined in [docs/SPEC.md](docs/SPEC.md) and
 [docs/TODO.md](docs/TODO.md).
 

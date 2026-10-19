@@ -27,11 +27,13 @@ def main():
 
 Recorded: {utc_now()}. Reviewed controller revision: `{CODE}`.
 
-**Core implementation verified locally; full v0 acceptance is still open.** The
-owner approved custom v0 for compact contexts and reliable recovery. The owner
-also confirmed only one Ollama endpoint is available. The required independent
-server scenario has not been replaced by URL aliases, proxies or a simulated
-second Ollama server. TUI and post-v0 integrations remain behind that gate.
+**v0 locally verified within the owner-approved single-endpoint scope.** The
+owner approved custom v0 for compact contexts and reliable recovery. On 2026-10-19,
+after confirming only one Ollama endpoint is available, the owner instructed:
+“We need to skip that test because I only have one available.” SPEC 1.1 therefore
+defers independent-server and one-server-outage acceptance. These tests were not
+run and are not claimed as passed. Existing measurements and benchmark registrations
+are unchanged; this is an explicit acceptance-scope revision.
 
 ## Implemented workflow and local gates
 
@@ -232,14 +234,16 @@ frozen registrations. No superiority claim follows from four successful v0 tasks
 | Qualified confinement | actual namespace/cgroup checks and hostile preparation hook | local pass |
 | Durable restart | real process kill and resume without duplicate edits | local pass |
 | Retained branches/original preservation | successful task records, clean original project checks | local pass |
-| Two projects against two different endpoints | only shared-endpoint demonstration available | **not verified** |
+| Two projects sharing the available endpoint | separate native processes/roots and disjoint inference-lock intervals | local pass |
+| Independent servers and one-server outage | unavailable; owner explicitly requested skipping | **deferred / not run** |
 | Headless events, diffs and outcomes | live CLI stdout, journals, status and replay | local pass |
 | No mandatory paid API/containers/IDE bridge | native uv/Git/bwrap/systemd and supplied Ollama | local pass |
 | Versions, budgets and limitations | manifests, frozen policies, this report | local pass |
 
-P6-07/P7-05 full acceptance remains open. P7-02/P7-04 need the independent-server
-scenario, or an explicit owner-approved specification revision deferring it.
-P8 work has not started. No silent gate change has been made.
+P6-07/P7-05 satisfy the revised SPEC 1.1 local acceptance scope. The distinct-server
+portion of P7-02 and remote/two-server P7-04 acceptance remain deferred, not passed.
+P8 work has not started. Remote CI, hardware and human acceptance of generated task
+patches remain separate from this local milestone.
 
 ## Reproduction and artifact inventory
 

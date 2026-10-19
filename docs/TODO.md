@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** Persistent v0 core verified locally; independent-server acceptance unavailable
+**Status:** v0 locally verified; owner deferred unavailable two-server acceptance
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -16,8 +16,10 @@ Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
 Only one Ollama endpoint is available, as confirmed by the owner. Shared-endpoint
-concurrency is verified; independent-server/offline-server acceptance is not.
-P6-07/P7-02/P7-04/P7-05 remain open and post-v0 work has not started. See the
+concurrency is verified. The owner explicitly requested skipping the two-server
+test on 2026-10-19. SPEC 1.1 defers independent-server/offline-server acceptance,
+which remains untested. P6-07/P7-05 close under this revised scope; P7-02/P7-04
+retain their untested portions as deferred. Post-v0 work has not started. See the
 [v0 evidence and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md)
 and [task command guide](V0.md). Original Stage 0 scores/registrations are unchanged.
 
@@ -188,10 +190,12 @@ v4 edit-envelope failure is addressed by a separately registered flat tool inter
   Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `real policy/path and Python/Rust controlled tasks` | expected public signatures fail on bases, candidate checks pass; passing/unrelated bases stop inconclusively | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217220+00:00
 - [x] **P6-06** Implement deterministic verification matrix and repair cycle with bounded diagnostics and independent held-out acceptance checks. **Accept:** failing checks never become pass via model assertion.
   Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `repair/replan and private-failure tests; live accepted tasks` | deterministic all-check matrix, bounded public repair, terminal independent private acceptance | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217225+00:00
-- [ ] **P6-07** Run end-to-end v0 on real representative tasks; independently inspect diffs, tests, recovery and task statuses. **Accept:** every `SPEC.md` §12 criterion has a linked evidence artifact.
+- [x] **P6-07** Run end-to-end v0 on real representative tasks; independently inspect diffs, tests, recovery and task statuses. **Accept:** every `SPEC.md` §12 criterion has a linked evidence artifact.
 
-P6-07 partial evidence: two real repository repairs and two controlled mixed-language
-projects pass locally; the full §12 matrix still lacks independent-server evidence.
+P6-07 evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` |
+`uv run pytest` (67 passed), two real repository repairs and two controlled
+mixed-language projects | local pass within SPEC 1.1 scope, reviewed 2026-10-19.
+The owner deferred independent-server acceptance; that scenario was not run.
 The [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) preserves failed attempts,
 fixture corrections, revision/artifact hashes and explicit limitations.
 
@@ -199,17 +203,21 @@ fixture corrections, revision/artifact hashes and explicit limitations.
 
 - [x] **P7-01** Implement per-project configuration for canonical repository path, Ollama URL/model, permissions, task workspace and evidence directory; store secrets outside tracked config.
   Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `Project JSON policy; native live runs` | canonical repo/endpoint/model/state/scopes; private assets/runtime digests; credentials rejected in origins | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217249+00:00
-- [ ] **P7-02** Run two separate headless AI-coder processes on one host: Project A → remote/local Ollama A and Project B → remote/local Ollama B. **Accept:** both run concurrently without Docker/Podman.
+- [ ] **P7-02** **Deferred: distinct-server portion (owner decision, 2026-10-19).** Run two separate headless AI-coder processes on one host: Project A → remote/local Ollama A and Project B → remote/local Ollama B. **Accept:** both run concurrently without Docker/Podman.
 - [x] **P7-03** Prove separate worktrees, Serena processes, task IDs, journals and allowed path roots. **Accept:** deliberate cross-project file/tool requests are refused.
   Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `v0-projects-02; project-isolation tests` | separate worktrees, journals, task IDs, navigation PIDs and roots; actual cross-project read refused | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217259+00:00
-- [ ] **P7-04** Verify secure remote inference options (SSH tunnel/VPN/approved LAN), connection errors, and isolation when one server goes offline. **Accept:** other project's task state remains intact.
-- [ ] **P7-05** Publish an end-to-end evidence report: model/runtime matrix, benchmark results, open limitations, and honest local-vs-CI-vs-human acceptance state. **Gate:** v0 declared complete only if `SPEC.md` §12 passes.
+- [ ] **P7-04** **Deferred: remote/two-server acceptance (owner decision, 2026-10-19).** Verify secure remote inference options (SSH tunnel/VPN/approved LAN), connection errors, and isolation when one server goes offline. **Accept:** other project's task state remains intact.
+- [x] **P7-05** Publish an end-to-end evidence report: model/runtime matrix, benchmark results, open limitations, and honest local-vs-CI-vs-human acceptance state. **Gate:** v0 declared complete only if `SPEC.md` §12 passes.
 
 P7-02/P7-04 availability checkpoint: the owner confirmed “There's only one ollama
 endpoint.” Two native processes sharing that endpoint pass, and all inference-lock
 intervals are disjoint. This is not evidence for two independent servers or one
-server going offline while the other continues. P7-05's report is published, but
-its full acceptance gate remains open. No specification gate has been waived.
+server going offline while the other continues. The owner subsequently instructed:
+“We need to skip that test because I only have one available.” SPEC 1.1 records
+this explicit scope revision; deferred cases are not v0 blockers or passing tests.
+P7-05 evidence: controller `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` |
+`scripts/summarize_v0.py` | [published report and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md) |
+local scope verified, reviewed 2026-10-19; remote CI/hardware/human patch acceptance remain unclaimed.
 
 ---
 

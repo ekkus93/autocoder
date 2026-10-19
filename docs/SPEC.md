@@ -1,7 +1,7 @@
 # Local AI Coder — Technical Specification
 
-**Status:** v0 implementation has local evidence; independent-server acceptance remains open
-**Version:** 1.0-draft  
+**Status:** v0 locally verified within the owner-approved single-endpoint scope
+**Version:** 1.1-draft
 **Date:** 2026-10-19  
 **Companion:** [`TODO.md`](TODO.md)  
 **Design inputs:** `LOCAL_AI_CODER_ARCHITECTURE_DESIGN_REVIEW_2026-10-19.md`, `CLAUDE_REVIEW_AND_V0_OUTLINE_2026-10-19.md`, `LOCAL_AI_CODER_REVISED_ARCHITECTURE_CLAUDE_REVIEW_2026-10-19.md`, and `CLAUDE_SECOND_REVIEW_2026-10-19.md`.
@@ -245,7 +245,8 @@ The selected format is documented with **parse/format validity**, **apply succes
 
 ### 7.2 Multiple projects and Ollama endpoints
 
-- Project A and Project B MUST be launchable as **separate native processes** on the same Ubuntu host, pointing to independently configured Ollama endpoints and different repositories, with no containers or global daemon.
+- Project A and Project B MUST be launchable as **separate native processes** on the same Ubuntu host, using different repositories and independently configured endpoint settings, with no containers or global daemon. They MAY share one Ollama endpoint; inference requests to that endpoint must serialize.
+- Independent-server concurrency, secure remote transport and one-server-outage acceptance are deferred until a second endpoint is available. The owner explicitly requested skipping this test on 2026-10-19; no two-server result is claimed.
 - Each process MUST isolate config, worktree roots, logs, task IDs, journal and Serena process. Cross-project filesystem paths MUST be rejected by gateway root validation.
 - Global installations of `git`, `gh`, `uv`, Python and shared stateless services MAY be reused.
 - Remote Ollama credentials/addresses must not leak into model prompts. Avoid exposing unauthenticated Ollama directly to untrusted networks; prefer SSH tunnels/VPN or other approved secure transport.
@@ -355,19 +356,22 @@ If the component gate fails, do not invest in a full TUI or multi-agent expansio
 
 ## 12. v0 acceptance criteria
 
-v0 is acceptable only when all the following have objective evidence:
+v0 is acceptable only when all the following have objective evidence. Version 1.1
+records the owner's 2026-10-19 decision to skip the unavailable two-server test;
+shared-endpoint isolation is the current acceptance scope. Evidence for the
+criteria below is recorded in the [v0 acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md).
 
-- [ ] A full loop completes a controlled task: baseline → orientation → plan → guarded edit → deterministic verification → bounded repair if needed → evidence-backed completion.
-- [ ] Each phase is demonstrably fresh-context, with structured bounded handoffs and measured token/schema consumption.
-- [ ] The qualified edit primitive correctly enforces unique target/path and hash preconditions and reconciles ambiguous mutations.
-- [ ] Existing tests/protected files cannot be silently weakened; held-out acceptance checks remain outside agent visibility.
-- [ ] Unattended checks execute in validated sandbox confinement; otherwise the engine refuses them.
-- [ ] JSONL intent/outcome records allow restart to identify and reconcile unresolved operations without duplicate edits.
-- [ ] An isolated local task branch/worktree is created and remains available for user integration; user checkout is unchanged.
-- [ ] Two native processes can run distinct repositories against two different Ollama endpoints without crossed paths or state.
-- [ ] Headless CLI emits machine-readable events, useful errors, actual diffs, test evidence, and honest outcome statuses.
-- [ ] No paid API, Ralph Bridge, IDE integration, or mandatory Docker/Podman is required.
-- [ ] Benchmarks and v0 results include exact model/runtime/tool versions, budgets, comparison evidence and explicit limitations.
+- [x] A full loop completes a controlled task: baseline → orientation → plan → guarded edit → deterministic verification → bounded repair if needed → evidence-backed completion.
+- [x] Each phase is demonstrably fresh-context, with structured bounded handoffs and measured token/schema consumption.
+- [x] The qualified edit primitive correctly enforces unique target/path and hash preconditions and reconciles ambiguous mutations.
+- [x] Existing tests/protected files cannot be silently weakened; held-out acceptance checks remain outside agent visibility.
+- [x] Unattended checks execute in validated sandbox confinement; otherwise the engine refuses them.
+- [x] JSONL intent/outcome records allow restart to identify and reconcile unresolved operations without duplicate edits.
+- [x] An isolated local task branch/worktree is created and remains available for user integration; user checkout is unchanged.
+- [x] Two native processes can run distinct repositories against the available shared Ollama endpoint without crossed paths or state, serializing inference requests. Independent-server acceptance is deferred, not passed.
+- [x] Headless CLI emits machine-readable events, useful errors, actual diffs, test evidence, and honest outcome statuses.
+- [x] No paid API, Ralph Bridge, IDE integration, or mandatory Docker/Podman is required.
+- [x] Benchmarks and v0 results include exact model/runtime/tool versions, budgets, comparison evidence and explicit limitations.
 
 ## 13. Later milestones (not part of v0 acceptance)
 
