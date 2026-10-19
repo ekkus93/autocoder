@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** Foundation in progress; sandbox qualification blocked by host AppArmor policy
+**Status:** Stage 0 micro-experiments reviewed; v4 failed feasibility gate; corrective v5 pilot running
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -9,7 +9,13 @@
 
 ## Current execution checkpoint
 
-Completed P0-01–P0-03 and the P1D-01 host diagnostic. P0-04–P0-08 have partial foundation support and remain unchecked. Host AppArmor denies bubblewrap namespace setup; assistance is needed before sandbox qualification and candidate scoring. See the [evidence report](evidence/STAGE0_FOUNDATION_2026-10-19.md) for exact revisions, commands, artifacts, and the resumption steps. Full v0 development remains behind Stage 0.
+The endpoint recovered with the same reference model/template. All 42 v4 pilot
+runs completed: loop 3/8, Aider 7/8, OpenCode 7/8 on the initial suite. Full v0
+remains blocked. A separately frozen v5 correction uses flat edit calls and gives
+all arms public functional feedback, keeping tasks, held-out oracles and gates.
+See [component evidence](evidence/STAGE0_COMPONENTS_2026-10-19.md),
+[v4 results](evidence/STAGE0_PILOT_V4_2026-10-19.md), and the
+[crash/recovery record](evidence/RECOVERY_2026-10-19.md).
 
 ## How to use this checklist
 
@@ -29,55 +35,91 @@ Completed P0-01–P0-03 and the P1D-01 host diagnostic. P0-04–P0-08 have parti
   Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run pytest; uv run autocoder smoke` | pass; 17 tests and native smoke verified | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
 - [x] **P0-03** Build fixture manager using throwaway Git repositories/worktrees with safe cleanup and pinned base SHAs. **Accept:** identical fixture can be restored for repeated arms without contaminating the original repository.
   Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run pytest; uv run autocoder smoke` | pass; 17 tests and native smoke verified | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
-- [ ] **P0-04** Record exact model names/digests, quantization, chat templates, Ollama and client builds, Python/Serena versions, host/GPU details, tool inventories and licenses. **Accept:** reproducibility manifest emitted before every run.
-- [ ] **P0-05** Pre-register **five micro-experiment families** and **eight end-to-end tasks** (4 Python, 4 Rust) with fixed task prompts, protected oracles, scoring scripts, model settings, allowed tools and resource caps. **Accept:** immutable versioned benchmark manifest with checksums.
-- [ ] **P0-06** Set and freeze provisional Stage 0 thresholds from `SPEC.md` §11.4 *before* scored evaluation; provide an explicit change-control process. **Accept:** scored suite will refuse an unversioned changed threshold/budget.
-- [ ] **P0-07** Implement baseline/hidden-oracle scoring and test-tamper detection. **Accept:** held-out checks are unreadable from candidate worktrees; a deliberate agent-side attempt to weaken tests is flagged.
-- [ ] **P0-08** Select fixed task budget defaults (wall time, request tokens, output tokens, tool calls, repairs) and capture per-run usage. **Accept:** hard limits are enforced and produce `BUDGET_EXHAUSTED`, never false success.
+- [x] **P0-04** Record exact model names/digests, quantization, chat templates, Ollama and client builds, Python/Serena versions, host/GPU details, tool inventories and licenses. **Accept:** reproducibility manifest emitted before every run.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `per-run inventory; scripts/record_integrations.py` | manifests include model/template/build/host and independent integration inventory | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P0-05** Pre-register **five micro-experiment families** and **eight end-to-end tasks** (4 Python, 4 Rust) with fixed task prompts, protected oracles, scoring scripts, model settings, allowed tools and resource caps. **Accept:** immutable versioned benchmark manifest with checksums.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `frozen benchmarks/v2, v3, v4` | five families and eight tasks registered per version; chronological limitations recorded | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P0-06** Set and freeze provisional Stage 0 thresholds from `SPEC.md` §11.4 *before* scored evaluation; provide an explicit change-control process. **Accept:** scored suite will refuse an unversioned changed threshold/budget.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `verify_engines; tests/test_foundation.py` | checksum-bound gates and budgets reject changed assets | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P0-07** Implement baseline/hidden-oracle scoring and test-tamper detection. **Accept:** held-out checks are unreadable from candidate worktrees; a deliberate agent-side attempt to weaken tests is flagged.
+  Evidence: `49cb356db41b7a71bd5f275bcb8f6294d4a9dabe` | `uv run pytest tests/test_evaluator.py` | private scoring and protected-test tamper detection verified | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P0-08** Select fixed task budget defaults (wall time, request tokens, output tokens, tool calls, repairs) and capture per-run usage. **Accept:** hard limits are enforced and produce `BUDGET_EXHAUSTED`, never false success.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `uv run pytest; pilot-v4-01` | hard caps; actual budget failures retained as failures | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+
+Registration chronology: runtime/tool scoring used frozen v2; subsequent component
+adapters used v3; baseline qualification preceded frozen v4. A single complete
+engine was not frozen before every earlier exploratory/integration activity.
+Per-family source fingerprints and failures are retained; no retroactive common
+pre-registration or global all-green result is claimed.
 
 ## P1 — Stage 0 micro-gates (do not start full v0 before decision)
 
 ### P1A. Runtime and context feasibility
 
-- [ ] **P1A-01** Probe Qwen3.5-9B on Ollama at 16K/32K/64K, and 128K only if practical. Record requested vs observed context, model residency, memory, prefill/generation throughput, failures and context quality. **Accept:** reproducible table with actual measurements.
-- [ ] **P1A-02** Compare thinking enabled/disabled for relevant tasks, including output-budget and tool-use impact. **Accept:** phase-level metrics; no unsupported “thinking is always better” claim.
-- [ ] **P1A-03** Test remote Ollama connectivity/timeout/retry and non-ambiguous inference recovery. **Accept:** endpoint failure produces auditable error without modifying source or losing state.
+- [x] **P1A-01** Probe Qwen3.5-9B on Ollama at 16K/32K/64K, and 128K only if practical. Record requested vs observed context, model residency, memory, prefill/generation throughput, failures and context quality. **Accept:** reproducible table with actual measurements.
+  Evidence: `49cb356db41b7a71bd5f275bcb8f6294d4a9dabe` | `runtime-v2-01` | six allocation/short-context probes; full-window quality and physical GPU telemetry unverified | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1A-02** Compare thinking enabled/disabled for relevant tasks, including output-budget and tool-use impact. **Accept:** phase-level metrics; no unsupported “thinking is always better” claim.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `runtime-v2-01; cache-v3-01` | thinking effects measured under fixed response limits | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1A-03** Test remote Ollama connectivity/timeout/retry and non-ambiguous inference recovery. **Accept:** endpoint failure produces auditable error without modifying source or losing state.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `scripts/probe_transport.py; transport-01` | refusal/timeout/fresh recovery; source unchanged; controlled TCP faults, no second-host claim | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
 
 ### P1B. Tool calling and prompt/cache behavior
 
-- [ ] **P1B-01** Test Ollama native tool and structured-output calls versus its OpenAI-compatible API using the actual model/chat template. **Accept:** first-try schema, semantic correctness, and recovered/unrecoverable failure rates are distinct.
-- [ ] **P1B-02** Compare 4-, 6- and 12+-tool schema inventories over at least 40 representative tool-selection/argument trials. **Accept:** recorded schema-token cost and tool-choice correctness, including difficult negative cases.
-- [ ] **P1B-03** Compare stable fixed 5–6 tool definitions with per-phase subsets for correctness, prompt-cache reuse and latency. Keep `num_ctx` fixed within each arm. **Accept:** chosen approach justified by measurements.
-- [ ] **P1B-04** Check Pydantic/JSON Schema handoff decoding and bounded recovery of malformed responses. **Accept:** invalid outputs never silently enter the coordinator state.
+- [x] **P1B-01** Test Ollama native tool and structured-output calls versus its OpenAI-compatible API using the actual model/chat template. **Accept:** first-try schema, semantic correctness, and recovered/unrecoverable failure rates are distinct.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `tools-v2-01; handoffs-v3-01` | tool calls pass by one recovery; compatible structured handoff fails | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1B-02** Compare 4-, 6- and 12+-tool schema inventories over at least 40 representative tool-selection/argument trials. **Accept:** recorded schema-token cost and tool-choice correctness, including difficult negative cases.
+  Evidence: `49cb356db41b7a71bd5f275bcb8f6294d4a9dabe` | `tools-v2-01` | 240 trials; 40 per API/inventory; narrow repeated scenario set | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1B-03** Compare stable fixed 5–6 tool definitions with per-phase subsets for correctness, prompt-cache reuse and latency. Keep `num_ctx` fixed within each arm. **Accept:** chosen approach justified by measurements.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `cache-v3-01` | phase subsets selected from schema/latency measurements; limited cache evidence | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1B-04** Check Pydantic/JSON Schema handoff decoding and bounded recovery of malformed responses. **Accept:** invalid outputs never silently enter the coordinator state.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `handoffs-v3-01; tests/test_handoffs.py` | strict decode, stale/unknown rejection, one seeded recovery | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
 - [ ] **P1B-05** If tool parsing is a persistent blocker, run a small diagnostic using llama.cpp server and/or another quantization to identify the failure layer. **Accept:** documented root-cause hypothesis and tested mitigation or a clear no-go.
+
+P1B-05 is conditional and was not triggered by the tool-choice results. The later
+v4 edit-envelope failure is addressed by a separately registered flat tool interface.
 
 ### P1C. Code edits and retrieval
 
-- [ ] **P1C-01** Build the same edit fixtures for unique exact search/replace, Serena symbol edits, and unified diffs; include stale hashes, ambiguous matches, multiline replacements, and wrong files. **Accept:** fixtures and expected outcomes are versioned.
-- [ ] **P1C-02** Run at least 30 measured edit attempts; score format validity, correct target, clean apply, functional correctness and successful recovery separately. **Accept:** one v0 edit primitive selected on evidence, with a fallback/stop policy.
-- [ ] **P1C-03** Compare `rg` + bounded reads to Serena navigation for locating relevant symbols and tests; measure indexing overhead and tool output sizes. **Accept:** source-anchored recall/precision and latency report.
-- [ ] **P1C-04** Examine Aider's repo map as a measured optional retrieval feature rather than implementing one automatically. **Accept:** retain/defer decision based on baseline or targeted evaluation.
+- [x] **P1C-01** Build the same edit fixtures for unique exact search/replace, Serena symbol edits, and unified diffs; include stale hashes, ambiguous matches, multiline replacements, and wrong files. **Accept:** fixtures and expected outcomes are versioned.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `benchmarks/v3/edit_trials.json` | five scenarios shared across three formats | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1C-02** Run at least 30 measured edit attempts; score format validity, correct target, clean apply, functional correctness and successful recovery separately. **Accept:** one v0 edit primitive selected on evidence, with a fallback/stop policy.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `edits-v3-01` | 90 attempts; exact selected with guarded preconditions and one recovery | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1C-03** Compare `rg` + bounded reads to Serena navigation for locating relevant symbols and tests; measure indexing overhead and tool output sizes. **Accept:** source-anchored recall/precision and latency report.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `retrieval-v3-01` | 8/8 each on narrow one-symbol fixtures; startup/output measurements saved | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1C-04** Examine Aider's repo map as a measured optional retrieval feature rather than implementing one automatically. **Accept:** retain/defer decision based on baseline or targeted evaluation.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `repomap-01` | 8/8 symbols without inference; retain baseline map, defer custom map | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
 
 ### P1D. Security and sandbox feasibility
 
 - [x] **P1D-01** Test bubblewrap on target Ubuntu host with real AppArmor/user-namespace settings. **Accept:** startup result, mount/network isolation settings and repeatable probe.
   Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run autocoder sandbox-probe` | observed BLOCKED_ENVIRONMENT; isolation gate remains closed | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
-- [ ] **P1D-02** Prove the configured sandbox blocks reads of secret sentinels, writes outside worktree and disallowed network calls. **Accept:** all negative tests fail as expected, with logs.
-- [ ] **P1D-03** Define controlled dependency preparation (download/cache vs executable installation/build hooks). **Accept:** no untrusted setup hook is executed unrestricted outside isolation.
-- [ ] **P1D-04** Document a validated alternative if bubblewrap is unavailable, or explicitly constrain the product to supervised mode. **Gate:** no unattended tests/builds without proven isolation; do not bypass host security controls.
+  Resumption: `832f9fae6c39f99bac7c709b13ab2828f0edcbb7` | `sandbox-resume-01` | VERIFIED_LOCAL; all five checks pass after policy installation | [component report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | 2026-10-19T21:30:39Z
+- [x] **P1D-02** Prove the configured sandbox blocks reads of secret sentinels, writes outside worktree and disallowed network calls. **Accept:** all negative tests fail as expected, with logs.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `uv run pytest tests/test_isolation.py; sandbox-resume-01` | actual sentinel/write/network probes pass after administrator policy installation | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1D-03** Define controlled dependency preparation (download/cache vs executable installation/build hooks). **Accept:** no untrusted setup hook is executed unrestricted outside isolation.
+  Evidence: `d5f14acd2432c914aa78a25a45c0b457a7548b4b` | `uv run pytest tests/test_isolation.py` | hostile hook confined; dependency policy documented; general acquisition unavailable | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1D-04** Document a validated alternative if bubblewrap is unavailable, or explicitly constrain the product to supervised mode. **Gate:** no unattended tests/builds without proven isolation; do not bypass host security controls.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `tests/test_evaluator.py; docs/DEPENDENCY_PREPARATION.md` | fail closed without qualified bubblewrap; no alternate or host execution supported | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
 
 ### P1E. Microsoft Agent Framework spike
 
-- [ ] **P1E-01** Implement only a tiny MAF spike: remote/local Ollama, tool calls, Serena MCP, fresh contexts and structured outputs. **Accept:** actual run artifacts, current API/version pins and known workarounds.
-- [ ] **P1E-02** Compare that tiny spike to direct Python `asyncio` + Ollama/MCP on complexity, reliability and observability; decide **use MAF** or **do not use MAF**. **Gate:** no full second backend or ambiguous mandatory framework dependency.
+- [x] **P1E-01** Implement only a tiny MAF spike: remote/local Ollama, tool calls, Serena MCP, fresh contexts and structured outputs. **Accept:** actual run artifacts, current API/version pins and known workarounds.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `experiments/maf/spike.py; maf-spike-01 and -02` | negative feasibility result; MCP initialization blocks tool qualification, failures retained | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P1E-02** Compare that tiny spike to direct Python `asyncio` + Ollama/MCP on complexity, reliability and observability; decide **use MAF** or **do not use MAF**. **Gate:** no full second backend or ambiguous mandatory framework dependency.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `MAF/direct component comparison` | choose direct asyncio plus independent MCP; MAF not selected | [report](evidence/STAGE0_COMPONENTS_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
 
 ## P2 — End-to-end Stage 0 gate
 
-- [ ] **P2-01** Prepare optimized OpenCode baseline with corrected Ollama context/tooling and the same model digest as our runner. **Accept:** recorded commands, config and fairness limitations.
-- [ ] **P2-02** Prepare Aider baseline with matching model and comparable allowed context, tokens, time and test access. **Accept:** reproducible configuration and fairness limitations.
-- [ ] **P2-03** Build the minimal test harness to run orient → plan → edit → check on clean fixture copies with strict caps; this is not yet the general application. **Accept:** headless execution produces trace, diff and check result.
-- [ ] **P2-04** Run the eight pre-registered Python/Rust tasks against baselines and our harness, with held-out oracles and independent workspaces. **Accept:** no task swaps after results and no oracle exposure.
-- [ ] **P2-05** Repeat the preselected subset, classify failures and report task-level unrecoverable error rates, regressions, time/tokens and context/caching effects. **Accept:** raw outputs, summary and clear small-sample uncertainty.
+- [x] **P2-01** Prepare optimized OpenCode baseline with corrected Ollama context/tooling and the same model digest as our runner. **Accept:** recorded commands, config and fairness limitations.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `opencode-qualification-02; pilot-v4-01` | pinned binary/custom short prompt/native-adapted provider qualified; fairness caveats recorded | [report](evidence/STAGE0_PILOT_V4_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P2-02** Prepare Aider baseline with matching model and comparable allowed context, tokens, time and test access. **Accept:** reproducible configuration and fairness limitations.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `aider-qualification-02; pilot-v4-01` | isolated locked uv environment and bounded inference proxy qualified | [report](evidence/STAGE0_PILOT_V4_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P2-03** Build the minimal test harness to run orient → plan → edit → check on clean fixture copies with strict caps; this is not yet the general application. **Accept:** headless execution produces trace, diff and check result.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `scripts/run_pilot.py; tests/test_pilot.py` | finite headless harness emits trace/diff/private terminal score | [report](evidence/STAGE0_PILOT_V4_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P2-04** Run the eight pre-registered Python/Rust tasks against baselines and our harness, with held-out oracles and independent workspaces. **Accept:** no task swaps after results and no oracle exposure.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `pilot-v4-01` | all 24 initial runs complete; no task swaps; loop 3/8 versus baseline 7/8 each | [report](evidence/STAGE0_PILOT_V4_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
+- [x] **P2-05** Repeat the preselected subset, classify failures and report task-level unrecoverable error rates, regressions, time/tokens and context/caching effects. **Accept:** raw outputs, summary and clear small-sample uncertainty.
+  Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `pilot-v4-01` | 18 preselected repeats complete; rates/usage in v4 report; no isolated cache ablation | [report](evidence/STAGE0_PILOT_V4_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
 - [ ] **P2-06** **STAGE 0 GO/NO-GO DECISION.** Apply frozen policy in `SPEC.md` §11.4. **Accept:** signed-off proceed/change-model/change-tools/stop decision with evidence; no claim of superiority from a tiny sample.
 
 ## P3 — v0 deterministic coordinator and model interface (depends on P2-06 go)
@@ -160,4 +202,4 @@ Evidence:
 - `LOCAL_AI_CODER_REVISED_ARCHITECTURE_CLAUDE_REVIEW_2026-10-19.md` — revised design discussion; historical.
 - `CLAUDE_SECOND_REVIEW_2026-10-19.md` — second critique; reconciled into this checklist.
 
-**Initial status:** Every task remains unchecked. No benchmark or software implementation is claimed complete by creating these documents.
+**Initial document status:** This checklist began with every task unchecked. Current completion claims require the evidence records above.

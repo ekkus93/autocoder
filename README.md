@@ -54,26 +54,39 @@ load a model or measure inference throughput.
 
 ## Benchmark registration and execution boundary
 
-`benchmarks/v1/` contains provisional frozen thresholds/budgets and a draft set of
-four Python and four Rust tasks. Its checksum lock detects changed or added assets:
+Frozen registrations live under `benchmarks/`: v1 is the initial draft; v2/v3
+bind the component experiments; v4 binds the first complete pilot; v5 registers
+the corrective flat-edit/public-feedback condition. Each directory has a checksum
+lock. Engine hashes additionally bind executable controller sources. Reproduce
+older experiments from their recorded commit rather than editing frozen assets.
 
 ```sh
-uv run autocoder verify-protocol --expected-sha256 dfaecd3da603dfda996895486d109bfe01c5752d5432e27a4cf96b4ee2a7628e
+uv run python scripts/run_pilot_v5.py \
+  --expected-sha256 c04da250ab2f317ff8f4dabef3f18d91530e75811d6ed5a68f730e89ade87307 \
+  --output /tmp/autocoder-pilot-v5-01
 ```
 
-There is no scored runner yet. Oracle coverage, exact micro-trial registration,
-scoring scripts and integration qualification remain incomplete (P0-05/P0-07).
-Scored commands must require an explicit registration digest when introduced.
-To change frozen gates or budgets, create a new benchmark directory/version, record
-the rationale, and freeze its asset hashes before scoring. Never silently tune
-thresholds against observed scores.
+This is a sequential, bounded 42-run suite (eight tasks per arm, followed by the
+preselected repeats), requiring the registered model digest, baseline binary and
+isolated Aider environment. It makes real inference requests. Baseline bindings
+and fairness limitations are in `benchmarks/v5/`; they include machine-specific
+binary paths. Change bindings only in a newly frozen registration before scoring.
+See [component evidence](docs/evidence/STAGE0_COMPONENTS_2026-10-19.md) for measured
+scope, failures and selected primitives. Stage 0 viability remains a separate gate.
 
-The sandbox probe uses isolated namespaces, read-only system mounts, a writable
-throwaway candidate directory and no host home mount. It checks a hidden sentinel,
-outside writes, network namespace isolation and worktree writes. Failed startup is
-`BLOCKED_ENVIRONMENT`, never evidence that negative tests passed. This preliminary
-probe is not a production sandbox executor. No candidate execution is provided
-until isolation and evaluator boundaries are qualified.
+The evaluator requires bubblewrap, an effective user-namespace/AppArmor policy,
+`prlimit`, a user systemd manager with cgroup limits, and a Rust toolchain for Rust
+tasks. Commands run offline with read-only system/toolchain mounts and a writable
+throwaway worktree; the host home and private oracle files are absent. Memory,
+process, CPU, file, output and wall limits apply. Startup qualification failure
+blocks execution; no host fallback is provided. Baseline model access goes through
+a bounded inference-only proxy, without giving clients host network access.
+
+Run `uv run autocoder sandbox-probe --output /tmp/autocoder-sandbox-02` on a new
+host. A startup failure is `BLOCKED_ENVIRONMENT`, not a passed negative test.
+The [dependency policy](docs/DEPENDENCY_PREPARATION.md) distinguishes trusted
+controller bootstrap from candidate build/install hooks. Candidate fixtures use
+only standard libraries; arbitrary dependency acquisition is not implemented.
 
 Source: `src/autocoder/`; tests: `tests/`; specification and evidence summaries:
 `docs/`. `Fixture` owns its entire temporary repository/worktree pair and cleans
