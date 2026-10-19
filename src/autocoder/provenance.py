@@ -91,7 +91,7 @@ def inventory(repository: Path, endpoint: str, model: str) -> dict:
     except Exception as error:
         ollama["model"] = {"status": "unavailable", "error_type": type(error).__name__}
     source_hashes = {}
-    for pattern in ("src/**/*.py", "benchmarks/v1/*", "pyproject.toml", "uv.lock"):
+    for pattern in ("src/**/*.py", "benchmarks/**/*.json", "pyproject.toml", "uv.lock"):
         for path in repository.glob(pattern):
             if path.is_file():
                 source_hashes[str(path.relative_to(repository))] = digest(path.read_bytes())
@@ -136,10 +136,17 @@ def inventory(repository: Path, endpoint: str, model: str) -> dict:
             )
         },
         "gpu_pci": command(["lspci", "-nn"]),
+        "cpu_details": command(["lscpu"]),
+        "memory": Path("/proc/meminfo").read_text(),
+        "os_release": Path("/etc/os-release").read_text(),
+        "integrations": json.loads((repository / "benchmarks/integrations.json").read_text())
+        if (repository / "benchmarks/integrations.json").is_file()
+        else {"status": "not_qualified"},
         "tool_inventory": ["fixture_integrity", "protocol_verification", "sandbox_probe"],
         "limitations": [
             "No inference or model quality is measured by inventory collection.",
-            "Serena version is unknown unless installed in the runner environment.",
-            "Tool licenses must be qualified before selecting integrations.",
+            "Serena is an independent pinned process; see integrations for its environment.",
+            "Uninstalled integrations are not claimed tested; "
+            "redistribution is outside this local spike.",
         ],
     }

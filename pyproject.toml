@@ -9,7 +9,10 @@ description = "Finite, reproducible Stage 0 experiments for a local coding loop"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-dependencies = ["pydantic>=2.12,<3"]
+dependencies = [
+    "httpx>=0.28,<1",
+    "pydantic>=2.12,<3",
+]
 
 [project.scripts]
 autocoder = "autocoder.cli:main"

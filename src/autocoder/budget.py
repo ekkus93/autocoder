@@ -32,5 +32,17 @@ class Budget:
         for name, amount in amounts.items():
             self._used[name] += amount
 
+    def settle_inference(
+        self, reserved_request: int, reserved_output: int, actual_request: int, actual_output: int
+    ) -> None:
+        for name, reserved, actual in (
+            ("request_tokens", reserved_request, actual_request),
+            ("output_tokens", reserved_output, actual_output),
+        ):
+            if not 0 <= actual <= reserved <= self._used[name]:
+                raise ValueError("Invalid inference reservation settlement")
+        self._used["request_tokens"] -= reserved_request - actual_request
+        self._used["output_tokens"] -= reserved_output - actual_output
+
     def snapshot(self) -> Usage:
         return Usage(elapsed_seconds=time.monotonic() - self.started, **self._used)

@@ -1,0 +1,13 @@
+{
+  "src/autocoder/budget.py": "588c6f9131f29fb6ace9e51a25c30712768d1b5455abfd4e6b2c9523891f531a",
+  "src/autocoder/cli.py": "e69df89e612868514f32aff0e8b60f69a47406a0032fc8afab14e7ec957d69d9",
+  "src/autocoder/evaluator.py": "bdac60da08a763a8c1e882c53ff6a0531cae22ee212bb1b093f546bffff03631",
+  "src/autocoder/execution.py": "bb9ddf23f5409cfea91a40c5c1594476005bd9229bffb72c66e60f397e777ac9",
+  "src/autocoder/experiments.py": "9ab91c9becf7227ba8ab87514e9889a66311157a539ea765fa61b1cae9ccbd26",
+  "src/autocoder/fixtures.py": "1a46fb7b455eb7ed4434094572b810decf4a306c7e45bc548dec884c4b5c9c9d",
+  "src/autocoder/inference.py": "a7b5a48f9d5f5f36f4dd85ad2feeb95ade4aa18b8d552f80c895140c2699d7bb",
+  "src/autocoder/protocol.py": "12cc364fad3b9e04b1f05268e45dbb023985f2bd06cf280a365ace4a93ad330b",
+  "src/autocoder/provenance.py": "6e96676cdf8800085d54d676d3026aea6e3f0a4121ab8a294ed21e7300d6a59d",
+  "src/autocoder/sandbox.py": "881327ee110b6bb4eeed3a7cf43a4a397ec55f6133a58bb1303f932a32c37e9e",
+  "src/autocoder/tool_schema.py": "291735941f86a1c3d7d1e610dd5e33ee6c4bc43d6ab5b9459097422e68fc1c46"
+}
