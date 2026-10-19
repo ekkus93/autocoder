@@ -2,6 +2,7 @@
 
 import ast
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -35,7 +36,11 @@ class ToolGateway:
         allowed = READ_TOOLS | (
             {"apply_edit", "run_named_check"} if self.phase in WRITE_PHASES else set()
         )
-        return [tool for tool in inventory(6) if tool["function"]["name"] in allowed]
+        tools = [tool for tool in inventory(6) if tool["function"]["name"] in allowed]
+        for tool in tools:
+            if tool["function"]["name"] == "read_file_range":
+                tool["function"]["description"] += " Read at most 120 lines: end <= start + 119."
+        return tools
 
     def read(self, name, start=1, end=120):
         if not self.project.can_read(name):
@@ -59,18 +64,43 @@ class ToolGateway:
         self.reads.setdefault(name, []).append((start, result["end"], result["sha256"]))
         return result
 
-    def evidence(self, paths=None):
+    def evidence(self, paths=None, request=None):
         # Default text budget is divided across explicitly configured paths.
         selected = list(paths or self.project.readable_paths)
         if len(selected) > 8:
             selected = selected[:8]
         limit = min(3000, 12000 // max(1, len(selected)))
         files = {name: self.read(name) for name in selected}
+        focused = set()
+        if request:
+            identifiers = set(re.findall(r"[A-Za-z_]\w{2,}", request))
+            for name in selected:
+                _, data = safe_file(self.workspace.root, name)
+                if name.endswith(".py"):
+                    try:
+                        nodes = [
+                            n
+                            for n in ast.walk(ast.parse(data))
+                            if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
+                            and n.name in identifiers
+                        ]
+                    except SyntaxError:
+                        nodes = []
+                    if len(nodes) == 1:
+                        node = nodes[0]
+                        files[name] = self.read(
+                            name, node.lineno, min(node.end_lineno, node.lineno + 119)
+                        )
+                        files[name]["truncated"] |= node.end_lineno > node.lineno + 119
+                        focused.add(name)
+        # Register only snippets actually sent, not earlier internal full-file prefixes.
+        self.reads = {name: [] for name in files}
         for entry in files.values():
             entry["truncated"] |= len(entry["source"]) > limit
             entry["source"] = entry["source"][:limit]
             entry["end"] = entry["start"] + max(1, len(entry["source"].splitlines())) - 1
-            self.reads[entry["path"]][-1] = (entry["start"], entry["end"], entry["sha256"])
+            self.reads[entry["path"]].append((entry["start"], entry["end"], entry["sha256"]))
+            entry["focused_symbol"] = entry["path"] in focused
         return {
             "base_sha": self.workspace.base_sha,
             "files": files,

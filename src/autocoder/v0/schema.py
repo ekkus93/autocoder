@@ -41,7 +41,7 @@ TRANSITIONS = {
     Phase.ORIENT: {Phase.REPRODUCE_AND_PLAN},
     Phase.REPRODUCE_AND_PLAN: {Phase.IMPLEMENT},
     Phase.IMPLEMENT: {Phase.VERIFY},
-    Phase.VERIFY: {Phase.REPAIR, Phase.REPORT},
+    Phase.VERIFY: {Phase.REPAIR, Phase.ORIENT, Phase.REPORT},
     Phase.REPAIR: {Phase.VERIFY},
     Phase.REPORT: set(),
 }

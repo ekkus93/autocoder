@@ -64,9 +64,10 @@ class Coordinator:
         raise AssertionError("Unreachable bounded handoff")
 
     async def orient(self, task):
-        evidence = self.gateway.evidence()
+        evidence = self.gateway.evidence(request=task)
         if len(self.project.readable_paths) > 8 or any(
-            v["truncated"] or v["total_lines"] > 120 for v in evidence["files"].values()
+            v["truncated"] or (v["total_lines"] > 120 and not v["focused_symbol"])
+            for v in evidence["files"].values()
         ):
             for _ in range(4):
                 messages = self.builder.build(
@@ -113,6 +114,7 @@ class Coordinator:
         return await self.structured(Orientation, task, evidence, validate=validate)
 
     async def plan(self, task, findings, baseline):
+        self.workspace.assert_expected()
         evidence = {
             "base_sha": self.workspace.base_sha,
             "files": {
@@ -121,6 +123,8 @@ class Coordinator:
             },
         }
         evidence["baseline_diagnostic"] = diagnostic(baseline)
+        if any(evidence["files"][f.path]["sha256"] != f.sha256 for f in findings.findings):
+            raise NeedsUser("Orientation became stale before planning")
 
         def validate(plan):
             if plan.base_sha != self.workspace.base_sha:
@@ -142,7 +146,7 @@ class Coordinator:
         observation = failure
         for _ in range(self.project.phase_tool_calls + 1):
             self.workspace.assert_expected()
-            evidence = self.gateway.evidence(plan.paths)
+            evidence = self.gateway.evidence(plan.paths, request=task)
             evidence["last_observation"] = observation
             messages = self.builder.build(
                 self.phase,
@@ -196,7 +200,10 @@ class Coordinator:
             else:
                 self.workspace.create()
             if metadata:
-                tags = request_json(self.project.endpoint, "/api/tags")["models"]
+                metadata_result = request_json(self.project.endpoint, "/api/tags")
+                if not isinstance(metadata_result.get("models"), list):
+                    raise SandboxUnavailable("Ollama inventory endpoint is unavailable")
+                tags = metadata_result["models"]
                 selected = next((m for m in tags if m["name"] == self.project.model), None)
                 if selected is None or (
                     self.project.model_digest and selected["digest"] != self.project.model_digest
@@ -236,6 +243,7 @@ class Coordinator:
             plan = await self.plan(request, findings, baseline)
             self.transition(Phase.IMPLEMENT)
             await self.implement(request, plan, diagnostic(baseline))
+            public_failures = 0
             while True:
                 self.transition(Phase.VERIFY)
                 checks = self.checks.all("candidate")
@@ -256,6 +264,20 @@ class Coordinator:
                     result["status"] = str(Outcome.VERIFIED_LOCAL)
                     break
                 self.budget.consume(repairs=1)
+                public_failures += 1
+                replans = [r for r in self.journal.read() if r["kind"] in {"RESUME", "REPLAN"}]
+                if public_failures == 2 and not replans:
+                    self.journal.emit("REPLAN", data={"count": 1})
+                    self.transition(Phase.ORIENT)
+                    revised_request = (
+                        request + "\nPublic failure after bounded repairs: " + diagnostic(checks)
+                    )
+                    findings = await self.orient(revised_request)
+                    self.transition(Phase.REPRODUCE_AND_PLAN)
+                    plan = await self.plan(revised_request, findings, baseline)
+                    self.transition(Phase.IMPLEMENT)
+                    await self.implement(request, plan, diagnostic(checks))
+                    continue
                 self.transition(Phase.REPAIR)
                 await self.implement(request, plan, diagnostic(checks))
             self.transition(Phase.REPORT)

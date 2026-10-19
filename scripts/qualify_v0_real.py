@@ -58,7 +58,8 @@ def main():
                     "/usr/bin/python3",
                     "-I",
                     "-c",
-                    'import ast,pathlib; ast.parse(pathlib.Path("src/autocoder/v0/schema.py").read_text())',
+                    "import ast,pathlib; "
+                    'ast.parse(pathlib.Path("src/autocoder/v0/schema.py").read_text())',
                 ],
             ),
         ],

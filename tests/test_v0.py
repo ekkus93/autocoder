@@ -507,3 +507,69 @@ def test_inline_rust_tests_are_preserved_without_extra_file_approval(tmp_path):
             Edit(path="lib.rs", old="{ 1 }", new="{ 2 }", expected_sha256=digest(source.encode()))
         )
         assert "#[test]" in (workspace.root / "lib.rs").read_text()
+
+
+def test_focused_retrieval_anchors_a_named_function_beyond_the_prefix(tmp_path):
+    source = "# padding\n" * 180 + SOURCE
+    with Fixture({"greeting.py": source}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        journal, workspace = task(project)
+        gateway = ToolGateway(workspace, Budget(project.limits), None)
+        evidence = gateway.evidence(request="Fix greet to include the name")
+        excerpt = evidence["files"]["greeting.py"]
+        assert excerpt["start"] == 181 and excerpt["end"] == 182
+        assert excerpt["source"].startswith("def greet")
+        assert excerpt["focused_symbol"] and not excerpt["truncated"]
+        assert gateway.reads["greeting.py"] == [(181, 182, digest(source.encode()))]
+
+
+def test_one_fresh_replan_after_two_public_failures(tmp_path):
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        seen = []
+        ordinary = fake_model(seen)
+
+        async def transport(endpoint, model, messages, budget, **kwargs):
+            body = json.loads(messages[-1]["content"])
+            phase = body["phase"]
+            if phase in {"IMPLEMENT", "REPAIR"}:
+                source = body["evidence"]["files"]["greeting.py"]
+                old = source["source"]
+                replacement = None
+                if old == SOURCE.rstrip():
+                    replacement = 'def greet(name):\n    return "Hello, Bob!"\n'
+                elif phase == "REPAIR" and "Bob" in old:
+                    replacement = 'def greet(name):\n    return "Hello, Carol!"\n'
+                elif phase == "IMPLEMENT" and "Carol" in old:
+                    replacement = FIXED
+                message = {"content": "Ready"}
+                if replacement:
+                    message = {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "apply_edit",
+                                    "arguments": {
+                                        "path": "greeting.py",
+                                        "old": old,
+                                        "new": replacement,
+                                        "expected_sha256": source["sha256"],
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                return {
+                    "message": message,
+                    "prompt_tokens": 0,
+                    "output_tokens": 0,
+                    "finished": True,
+                    "truncated": False,
+                }
+            return await ordinary(endpoint, model, messages, budget, **kwargs)
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "VERIFIED_LOCAL", result
+        rows = journal_for(project, result["task_id"]).read()
+        assert len([r for r in rows if r["kind"] == "REPLAN"]) == 1
+        assert result["usage"]["repairs"] == 2
