@@ -1,10 +1,12 @@
 """Bounded, offline Stage 0 execution in an independently probed bubblewrap policy."""
 
+import math
 import os
 import signal
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 from autocoder.protocol import Record
@@ -57,6 +59,20 @@ class Sandbox:
             "--nofile=128",
             "--",
         ]
+        unit = f"autocoder-check-{uuid.uuid4().hex}.scope"
+        arguments = [
+            "systemd-run",
+            "--user",
+            "--scope",
+            "--quiet",
+            "--unit",
+            unit,
+            "--property=MemoryMax=2G",
+            "--property=MemorySwapMax=0",
+            "--property=TasksMax=64",
+            f"--property=RuntimeMaxSec={math.ceil(timeout) + 2}s",
+            *arguments,
+        ]
         started = time.monotonic()
         status = "finished"
         # File-size limits bound output without unbounded communicate() buffering.
@@ -75,6 +91,12 @@ class Sandbox:
                 status = "timeout"
                 os.killpg(process.pid, signal.SIGKILL)
                 process.wait()
+            finally:
+                subprocess.run(
+                    ["systemctl", "--user", "stop", unit],
+                    capture_output=True,
+                    timeout=5,
+                )
             stdout.seek(0)
             stderr.seek(0)
             out = stdout.read(65537)
