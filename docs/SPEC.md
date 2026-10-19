@@ -1,6 +1,6 @@
 # Local AI Coder — Technical Specification
 
-**Status:** Proposed implementation specification (v0 baseline; not yet implemented)  
+**Status:** v0 implementation has local evidence; independent-server acceptance remains open
 **Version:** 1.0-draft  
 **Date:** 2026-10-19  
 **Companion:** [`TODO.md`](TODO.md)  

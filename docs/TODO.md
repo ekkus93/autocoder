@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** Stage 0 decision approved; implementing custom v0
+**Status:** Persistent v0 core verified locally; independent-server acceptance unavailable
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -9,11 +9,17 @@
 
 ## Current execution checkpoint
 
-The owner approved proceeding with the custom v0 after reviewing equal initial
-completion counts and the observed reduction in input tokens. The implementation
-target is compact contexts, reliable recovery and deterministic verification.
-P3–P7 remain subject to objective evidence; no general coding superiority or v0
-acceptance is claimed. See the [decision record](evidence/STAGE0_DECISION_2026-10-19.md).
+The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
+scoped tools, confined navigation/checks, durable intent/outcome recovery and
+controlled dependency preparation are implemented. The full suite passes 67 tests.
+Two repository policy repairs and two native Python/Rust project processes have
+verified local outcomes; original checkouts were preserved during successful runs.
+
+Only one Ollama endpoint is available, as confirmed by the owner. Shared-endpoint
+concurrency is verified; independent-server/offline-server acceptance is not.
+P6-07/P7-02/P7-04/P7-05 remain open and post-v0 work has not started. See the
+[v0 evidence and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md)
+and [task command guide](V0.md). Original Stage 0 scores/registrations are unchanged.
 
 ## How to use this checklist
 
@@ -125,48 +131,85 @@ v4 edit-envelope failure is addressed by a separately registered flat tool inter
 
 ## P3 — v0 deterministic coordinator and model interface (depends on P2-06 go)
 
-- [ ] **P3-01** Implement task/phase state machine and outcome vocabulary from `SPEC.md` §3, §10, with deterministic transitions and unit tests.
-- [ ] **P3-02** Implement chosen `ModelBackend` with endpoint override, model ID, timeout/cancel, usage metrics, bounded retries for inference-only calls, and pinned request context.
-- [ ] **P3-03** Implement fresh-context phase builder with stable prefixes, token/schema accounting, compact structured evidence, context reserves, and no inherited prior phase transcript.
-- [ ] **P3-04** Implement schema-validated orient/plan/implementation artifacts with grounding to paths, hashes and actual source revisions; reject invalid/stale handoffs.
-- [ ] **P3-05** Implement in-phase tool/step cap, duplicate tool-call fingerprint detection, observation truncation, task token/time cap, one replan and bounded repairs. **Accept:** seeded looping agent stops safely and reports exact reason.
-- [ ] **P3-06** Implement versioned event emitter and headless CLI consuming/printing task status, diff and approvals. **Accept:** batch mode and live event subscriber receive consistent state; no TUI prerequisite.
+- [x] **P3-01** Implement task/phase state machine and outcome vocabulary from `SPEC.md` §3, §10, with deterministic transitions and unit tests.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0.py` | deterministic transitions/outcomes; normal, invalid, repair and replan paths verified | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217094+00:00
+- [x] **P3-02** Implement chosen `ModelBackend` with endpoint override, model ID, timeout/cancel, usage metrics, bounded retries for inference-only calls, and pinned request context.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `ModelBackend; v0 real and shared-endpoint runs` | native endpoint/digest checks, deadlines/cancellation, usage reservations; no ambiguous inference replay | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217104+00:00
+- [x] **P3-03** Implement fresh-context phase builder with stable prefixes, token/schema accounting, compact structured evidence, context reserves, and no inherited prior phase transcript.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `ContextBuilder; MODEL_REQUEST artifacts` | fresh phase handoffs; within-phase native history; schema/input accounting and context reserves | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217108+00:00
+- [x] **P3-04** Implement schema-validated orient/plan/implementation artifacts with grounding to paths, hashes and actual source revisions; reject invalid/stale handoffs.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0.py; live task traces` | strict grounded findings/plans; unknown paths, stale hashes, duplicate names and changed check sets rejected | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217110+00:00
+- [x] **P3-05** Implement in-phase tool/step cap, duplicate tool-call fingerprint detection, observation truncation, task token/time cap, one replan and bounded repairs. **Accept:** seeded looping agent stops safely and reports exact reason.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0.py` | phase/total caps, duplicate fingerprints, bounded observations, three repairs and one restart/replan | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217113+00:00
+- [x] **P3-06** Implement versioned event emitter and headless CLI consuming/printing task status, diff and approvals. **Accept:** batch mode and live event subscriber receive consistent state; no TUI prerequisite.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `autocoder-task; event-replay-audit.json` | native live JSONL stdout and journal replay agree; diff/status/cancel/resume interfaces implemented | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217116+00:00
 
 ## P4 — v0 tool gateway, Serena and source edits (depends on P3)
 
-- [ ] **P4-01** Implement scoped `search_text`, `read_file_range`/`read_symbol`, `find_references`, `apply_edit`, and `run_named_check` contracts using typed inputs/outputs and bounded responses.
-- [ ] **P4-02** Enforce canonical root, symlink, role/phase permissions, protected-path policy, timeout and output caps **in gateway code**. **Accept:** negative tests block cross-repo writes and unauthorized commands.
-- [ ] **P4-03** Supervise one Serena MCP server per active task worktree; verify active root and handle cold startup/restart/timeout; provide safe `rg` fallback where valid.
-- [ ] **P4-04** Implement the Stage 0-selected edit primitive with unique targets, expected hashes, atomic/rollback-aware application and actual-diff inspection. **Accept:** ambiguous/stale/partial cases cannot be silently accepted.
-- [ ] **P4-05** Capture source provenance, tested revision, relevant symbol refs and bounded evidence snippets; invalidate stale references after edits.
+- [x] **P4-01** Implement scoped `search_text`, `read_file_range`/`read_symbol`, `find_references`, `apply_edit`, and `run_named_check` contracts using typed inputs/outputs and bounded responses.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `ToolGateway; live project traces` | typed bounded search/read/symbol/reference/edit/named-check interfaces; explicit fallback labels | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217130+00:00
+- [x] **P4-02** Enforce canonical root, symlink, role/phase permissions, protected-path policy, timeout and output caps **in gateway code**. **Accept:** negative tests block cross-repo writes and unauthorized commands.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0.py` | canonical scopes, symlink/hardlink rejection, role/plan permissions and protected-file policy verified | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217133+00:00
+- [x] **P4-03** Supervise one Serena MCP server per active task worktree; verify active root and handle cold startup/restart/timeout; provide safe `rg` fallback where valid.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `scripts/probe_v0_navigation.py; v0-navigation-04` | confined worktree-mirror MCP ownership, active-root check, source-change restart and bounded fallback | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217136+00:00
+- [x] **P4-04** Implement the Stage 0-selected edit primitive with unique targets, expected hashes, atomic/rollback-aware application and actual-diff inspection. **Accept:** ambiguous/stale/partial cases cannot be silently accepted.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0.py; live task diffs` | unique exact edits, raw hashes, atomic replacement and ambiguous-outcome reconciliation | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217139+00:00
+- [x] **P4-05** Capture source provenance, tested revision, relevant symbol refs and bounded evidence snippets; invalidate stale references after edits.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `HANDOFF/NAVIGATION/CHECK artifacts` | source/base hashes and actual line locations; invalid coordinates flagged and changed indexes restarted | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217145+00:00
 
 ## P5 — v0 Git lifecycle and durable side effects (depends on P3–P4)
 
-- [ ] **P5-01** Create collision-checked local task branch and isolated Git worktree from recorded exact base SHA; protect original checkout and pre-existing dirty files.
-- [ ] **P5-02** Implement per-worktree lock and write precondition checks; reject unauthorized path/symlink escapes and concurrently changed files.
-- [ ] **P5-03** Implement project-scoped append-only JSONL event journal and content-hashed evidence files outside the Git repo. **Accept:** events have task/operation IDs, UTC times, expected and observed state; secrets and source dumps excluded.
-- [ ] **P5-04** Journal intent → execution → observed outcome for edits and Git side effects. **Accept:** seeded crash between edit and outcome results in reconciliation without duplicate mutation.
-- [ ] **P5-05** Implement safe restart/resume after killed process, validating worktree identity, branch, hashes, journal tail and unresolved intents before further action.
-- [ ] **P5-06** Surface real diff, changed files, protected-test/config changes, and explicit **user-controlled** integration. **Accept:** no unexpected push, PR, merge, or main-branch mutation.
-- [ ] **P5-07** Measure Serena/LSP and Rust/Python cache startup in task worktrees; use only validated cache-sharing strategies.
+- [x] **P5-01** Create collision-checked local task branch and isolated Git worktree from recorded exact base SHA; protect original checkout and pre-existing dirty files.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `v0-real-policy-05; v0-real-path-01; v0-projects-02` | named retained task branches/worktrees; successful runs preserve original status | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217160+00:00
+- [x] **P5-02** Implement per-worktree lock and write precondition checks; reject unauthorized path/symlink escapes and concurrently changed files.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0.py` | exclusive task lock, write preconditions and unexpected-file/source-change refusal | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217163+00:00
+- [x] **P5-03** Implement project-scoped append-only JSONL event journal and content-hashed evidence files outside the Git repo. **Accept:** events have task/operation IDs, UTC times, expected and observed state; secrets and source dumps excluded.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `Journal; live JSONL traces` | private per-project state, fsynced hash chain, operation identities and hashed external evidence | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217167+00:00
+- [x] **P5-04** Journal intent → execution → observed outcome for edits and Git side effects. **Accept:** seeded crash between edit and outcome results in reconciliation without duplicate mutation.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `SIGKILL and interrupted-commit tests` | intent before filesystem/Git changes, observed outcomes afterward; pending operations reconciled without duplicate writes | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217171+00:00
+- [x] **P5-05** Implement safe restart/resume after killed process, validating worktree identity, branch, hashes, journal tail and unresolved intents before further action.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `full-loop SIGKILL/resume test` | policy/private assets, branch/HEAD/worktree, source hashes and journal revalidated; reservations survive restart | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217175+00:00
+- [x] **P5-06** Surface real diff, changed files, protected-test/config changes, and explicit **user-controlled** integration. **Accept:** no unexpected push, PR, merge, or main-branch mutation.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `autocoder-task diff/status/approve/refuse/mark-integrated` | real diff and approval/integration record; no generated branch merged or remote mutation performed | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217179+00:00
+- [x] **P5-07** Measure Serena/LSP and Rust/Python cache startup in task worktrees; use only validated cache-sharing strategies.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `v0-navigation-04; v0-projects-02 CHECK timings` | cold/warm navigation and fresh Python/Rust check costs recorded; no shared writable compiler/LSP cache qualified | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217184+00:00
 
 ## P6 — v0 sandboxed checks, test integrity and repair (depends on P3–P5; P1D gate)
 
-- [ ] **P6-01** Implement configured named checks for Python and Rust; record baseline and candidate exit codes, timestamps, exact revision and artifacts.
-- [ ] **P6-02** Execute unattended compilation/tests only inside the validated confinement backend. **Accept:** disabling/unavailable isolation results in fail-closed state, not host execution.
-- [ ] **P6-03** Implement safe dependency preparation/caching and offline check execution; verify build hooks cannot bypass the sandbox boundary.
-- [ ] **P6-04** Enforce protected existing tests/config/CI paths and review of explicit requested test modifications. **Accept:** a malicious/vacuous test change cannot obtain completion by itself.
-- [ ] **P6-05** Implement reproduce-first checks: bug regression fails on base for expected reason and passes on candidate; report inconclusive reproduction rather than pretending success.
-- [ ] **P6-06** Implement deterministic verification matrix and repair cycle with bounded diagnostics and independent held-out acceptance checks. **Accept:** failing checks never become pass via model assertion.
+- [x] **P6-01** Implement configured named checks for Python and Rust; record baseline and candidate exit codes, timestamps, exact revision and artifacts.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `VerificationRunner; real Python/Rust runs` | named checks record baseline/candidate exit, UTC times, exact source-tree hashes, base revisions and command artifacts | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217200+00:00
+- [x] **P6-02** Execute unattended compilation/tests only inside the validated confinement backend. **Accept:** disabling/unavailable isolation results in fail-closed state, not host execution.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `TaskSandbox; confinement and dependency tests` | offline namespaced/cgroup execution only; failed qualification refuses host execution | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217204+00:00
+- [x] **P6-03** Implement safe dependency preparation/caching and offline check execution; verify build hooks cannot bypass the sandbox boundary.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `uv run pytest tests/test_v0_dependencies.py` | inert bounded hash-pinned fetch, cache reuse, offline hostile hooks and read-only artifacts/prepared outputs | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217209+00:00
+- [x] **P6-04** Enforce protected existing tests/config/CI paths and review of explicit requested test modifications. **Accept:** a malicious/vacuous test change cannot obtain completion by itself.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `tamper, protected-path, inline-test and private-oracle tests` | existing protected changes cannot pass silently; exact approvals are frozen in policy | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217214+00:00
+- [x] **P6-05** Implement reproduce-first checks: bug regression fails on base for expected reason and passes on candidate; report inconclusive reproduction rather than pretending success.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `real policy/path and Python/Rust controlled tasks` | expected public signatures fail on bases, candidate checks pass; passing/unrelated bases stop inconclusively | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217220+00:00
+- [x] **P6-06** Implement deterministic verification matrix and repair cycle with bounded diagnostics and independent held-out acceptance checks. **Accept:** failing checks never become pass via model assertion.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `repair/replan and private-failure tests; live accepted tasks` | deterministic all-check matrix, bounded public repair, terminal independent private acceptance | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217225+00:00
 - [ ] **P6-07** Run end-to-end v0 on real representative tasks; independently inspect diffs, tests, recovery and task statuses. **Accept:** every `SPEC.md` §12 criterion has a linked evidence artifact.
+
+P6-07 partial evidence: two real repository repairs and two controlled mixed-language
+projects pass locally; the full §12 matrix still lacks independent-server evidence.
+The [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) preserves failed attempts,
+fixture corrections, revision/artifact hashes and explicit limitations.
 
 ## P7 — Native multi-project / multi-Ollama v0 acceptance
 
-- [ ] **P7-01** Implement per-project configuration for canonical repository path, Ollama URL/model, permissions, task workspace and evidence directory; store secrets outside tracked config.
+- [x] **P7-01** Implement per-project configuration for canonical repository path, Ollama URL/model, permissions, task workspace and evidence directory; store secrets outside tracked config.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `Project JSON policy; native live runs` | canonical repo/endpoint/model/state/scopes; private assets/runtime digests; credentials rejected in origins | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217249+00:00
 - [ ] **P7-02** Run two separate headless AI-coder processes on one host: Project A → remote/local Ollama A and Project B → remote/local Ollama B. **Accept:** both run concurrently without Docker/Podman.
-- [ ] **P7-03** Prove separate worktrees, Serena processes, task IDs, journals and allowed path roots. **Accept:** deliberate cross-project file/tool requests are refused.
+- [x] **P7-03** Prove separate worktrees, Serena processes, task IDs, journals and allowed path roots. **Accept:** deliberate cross-project file/tool requests are refused.
+  Evidence: `3b035ac9fa089b3e05058f93ce70a1b5f4910e39` | `v0-projects-02; project-isolation tests` | separate worktrees, journals, task IDs, navigation PIDs and roots; actual cross-project read refused | [v0 report](evidence/V0_IMPLEMENTATION_2026-10-19.md) | reviewed 2026-10-19T23:13:18.217259+00:00
 - [ ] **P7-04** Verify secure remote inference options (SSH tunnel/VPN/approved LAN), connection errors, and isolation when one server goes offline. **Accept:** other project's task state remains intact.
 - [ ] **P7-05** Publish an end-to-end evidence report: model/runtime matrix, benchmark results, open limitations, and honest local-vs-CI-vs-human acceptance state. **Gate:** v0 declared complete only if `SPEC.md` §12 passes.
+
+P7-02/P7-04 availability checkpoint: the owner confirmed “There's only one ollama
+endpoint.” Two native processes sharing that endpoint pass, and all inference-lock
+intervals are disjoint. This is not evidence for two independent servers or one
+server going offline while the other continues. P7-05's report is published, but
+its full acceptance gate remains open. No specification gate has been waived.
 
 ---
 

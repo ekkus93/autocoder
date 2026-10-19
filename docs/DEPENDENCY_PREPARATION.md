@@ -48,3 +48,17 @@ inaccessibility, bounded processes/output, and base/fixed candidate scoring.
 same sandbox and checks that it cannot read a host sentinel, write outside its
 worktree or connect to host Ollama. These are controller tests, not model benchmark
 scores. Any failure leaves isolation-dependent milestones incomplete.
+
+## Persistent v0 implementation
+
+The [v0 runner](V0.md) now implements digest-pinned inert acquisition and offline
+preparation as an explicit project policy. Its downloader does not import or
+execute packages. Preparation receives only declared artifacts read-only, runs in
+the qualified namespace/cgroup backend and publishes a bounded regular-file output
+tree into private task state. Checks receive that tree read-only and verify its
+hash before reuse. Candidate hooks cannot authorize network access or host execution.
+
+`tests/test_v0_dependencies.py` exercises bad digests/size limits, cache reuse,
+secret/network/outside-write refusal during a hostile hook, read-only artifacts,
+and read-only prepared outputs. Historical Stage 0 fixtures remain standard-library
+only; these application capabilities do not alter their registered conditions.
