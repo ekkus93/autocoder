@@ -48,6 +48,22 @@ def main():
             f"| {arm} | {passed_first}/{len(first)} | {passed_repeats}/{len(repeats)} | "
             f"{seconds:.2f} | {inputs:.0f}/{outputs:.0f} |\n"
         )
+    text += "\n## Shared successful initial tasks\n\n"
+    shared = [
+        task
+        for task in dict.fromkeys(row["task_id"] for row in initial)
+        if all(row["status"] == "VERIFIED_LOCAL" for row in initial if row["task_id"] == task)
+    ]
+    text += "Post-hoc descriptive subset: " + ", ".join(shared) + ".\n"
+    text += "Excluded failures remain in all primary completion rates above.\n\n"
+    text += "| Arm | Mean seconds | Mean input/output tokens |\n| --- | ---: | ---: |\n"
+    for arm in arms:
+        selected = [row for row in initial if row["arm"] == arm and row["task_id"] in shared]
+        if selected:
+            seconds = statistics.mean(row["usage"]["elapsed_seconds"] for row in selected)
+            inputs = statistics.mean(row["usage"]["request_tokens"] for row in selected)
+            outputs = statistics.mean(row["usage"]["output_tokens"] for row in selected)
+            text += f"| {arm} | {seconds:.2f} | {inputs:.0f}/{outputs:.0f} |\n"
     text += "\n## Repeat stability\n\n"
     text += "Preselected tasks, three additional rounds each.\n\n"
     text += "| Task | Arm | Initial, repeat 1, repeat 2, repeat 3 |\n| --- | --- | --- |\n"
@@ -73,10 +89,16 @@ def main():
         if row["status"] == "VERIFIED_LOCAL":
             continue
         folder = args.run / row["id"]
+        public_checks = sorted(folder.glob("public-[01].json"))
+        last_public = (
+            json.loads(public_checks[-1].read_text()).get("status") if public_checks else None
+        )
         if row["status"] == "BUDGET_EXHAUSTED":
             category = "resource budget"
         elif (folder / "candidate-score.json").exists():
             category = "terminal held-out functional failure"
+        elif last_public == "COMPILE_FAILURE":
+            category = "public compilation failure after bounded repair"
         elif "Public" in row.get("error", ""):
             category = "public check or bounded repair failure"
         else:
@@ -110,6 +132,9 @@ def main():
         "All arms use the registered digest, 32K context, thinking disabled and the same "
         "task limits. Client prompts, edit protocols, tool accounting and startup overhead "
         "differ. The inference proxy translates compatible requests to native Ollama. "
+        "The repairs counter bounds outer public-check retries. Client-internal "
+        "edit-format retries consume time/tokens but do not increment that counter; "
+        "Aider's text edit proposals also do not count as native tool calls. "
         "A conservative UTF-8 request-size reservation can refuse an invocation before "
         "actual reported input tokens reach the cap, especially for chatty clients. "
         "Budget failures remain failures. These limitations prevent a fair claim of "

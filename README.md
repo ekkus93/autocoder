@@ -71,8 +71,14 @@ preselected repeats), requiring the registered model digest, baseline binary and
 isolated Aider environment. It makes real inference requests. Baseline bindings
 and fairness limitations are in `benchmarks/v5/`; they include machine-specific
 binary paths. Change bindings only in a newly frozen registration before scoring.
+The Aider runtime is independently prepared with
+`uv sync --project experiments/aider --locked --python /usr/bin/python3`;
+the native baseline sandbox requires its interpreter under read-only `/usr`.
+OpenCode's exact executable path, version and SHA-256 are registered in
+`baseline-bindings.json`. The runner refuses a different binary or model digest.
 See [component evidence](docs/evidence/STAGE0_COMPONENTS_2026-10-19.md) for measured
-scope, failures and selected primitives. Stage 0 viability remains a separate gate.
+scope, failures and selected primitives. The [Stage 0 decision packet](docs/evidence/STAGE0_DECISION_2026-10-19.md)
+records the current gate: minimum feasibility passes; the product decision remains open.
 
 The evaluator requires bubblewrap, an effective user-namespace/AppArmor policy,
 `prlimit`, a user systemd manager with cgroup limits, and a Rust toolchain for Rust

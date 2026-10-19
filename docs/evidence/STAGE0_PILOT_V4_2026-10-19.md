@@ -27,6 +27,17 @@ All scheduled runs, including repeated tasks; means include failures.
 | aider | 7/8 | 1/6 | 28.22 | 3829/400 |
 | optimized_opencode | 7/8 | 6/6 | 11.30 | 8788/499 |
 
+## Shared successful initial tasks
+
+Post-hoc descriptive subset: py-chunks, rs-ranges.
+Excluded failures remain in all primary completion rates above.
+
+| Arm | Mean seconds | Mean input/output tokens |
+| --- | ---: | ---: |
+| minimal_loop | 8.68 | 1304/620 |
+| aider | 10.56 | 2111/200 |
+| optimized_opencode | 7.83 | 7058/298 |
+
 ## Repeat stability
 
 Preselected tasks, three additional rounds each.
@@ -66,7 +77,7 @@ Private expected values stay outside candidate worktrees and model feedback. Pub
 
 Tasks are tiny seeded Python/Rust fixtures. Repeated deterministic prompts are correlated, not independent evidence of general coding reliability. Per-task hidden cases check target behavior, not broad real-project regression coverage. No controlled pilot ablation isolates context or cache effects; see the separate component report for those measurements.
 
-All arms use the registered digest, 32K context, thinking disabled and the same task limits. Client prompts, edit protocols, tool accounting and startup overhead differ. The inference proxy translates compatible requests to native Ollama. A conservative UTF-8 request-size reservation can refuse an invocation before actual reported input tokens reach the cap, especially for chatty clients. Budget failures remain failures. These limitations prevent a fair claim of general superiority from token or timing differences alone.
+All arms use the registered digest, 32K context, thinking disabled and the same task limits. Client prompts, edit protocols, tool accounting and startup overhead differ. The inference proxy translates compatible requests to native Ollama. The repairs counter bounds outer public-check retries. Client-internal edit-format retries consume time/tokens but do not increment that counter; Aider's text edit proposals also do not count as native tool calls. A conservative UTF-8 request-size reservation can refuse an invocation before actual reported input tokens reach the cap, especially for chatty clients. Budget failures remain failures. These limitations prevent a fair claim of general superiority from token or timing differences alone.
 
 V4 checks public import/compilation; v5 adds shared public functional feedback and replaces the loop's nested edit payload with flat tool calls. They are different registered conditions, not interchangeable replicates.
 
