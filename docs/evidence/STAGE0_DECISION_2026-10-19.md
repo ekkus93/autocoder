@@ -2,9 +2,10 @@
 
 ## Status
 
-**NEEDS_USER: P2-06 product decision remains open.** Full v0 and TUI work have
-not started. This is a technical review by Codex, not owner sign-off or human
-acceptance. The reason for this checkpoint is `docs/TODO.md` P2-06's signed-off
+**GO: owner approved continuing the custom v0.** The owner explicitly replied
+“Ok. Let’s do that.” after the recommendation to continue for compact contexts,
+reliable recovery and verification. This authorizes v0 implementation, not human
+acceptance of unbuilt capabilities or a claim of coding superiority. The reason for this checkpoint is `docs/TODO.md` P2-06's signed-off
 Stage 0 decision and `docs/SPEC.md` §11.4(5)'s requirement for an actionable
 baseline advantage or a clear unmet requirement.
 
@@ -74,3 +75,9 @@ probe passes. CI, backend physical hardware acceptance and owner acceptance rema
 unclaimed. `AGENTS.md` was left unchanged.
 
 Review completed: 2026-10-19T21:39:48.581960+00:00.
+
+## Owner decision recorded
+
+2026-10-19T22:26:54.990289+00:00: Proceed with the custom v0 for smaller contexts and reliable recovery.
+Keep the original benchmark outcomes and gates. Validate on real repositories
+before claiming an advantage or v0 acceptance. Post-v0 integrations remain conditional.

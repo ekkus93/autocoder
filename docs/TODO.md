@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** Stage 0 experiments complete; P2-06 needs product decision before full v0
+**Status:** Stage 0 decision approved; implementing custom v0
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -9,17 +9,11 @@
 
 ## Current execution checkpoint
 
-Both 42-run pilots finished. The original loop completed 3/8 initially; the
-separately frozen correction completed 6/8, matching both corrected baselines.
-On the six preselected repeat runs per arm, loop and Aider completed 6/6 and
-OpenCode completed 3/6. The component and minimum feasibility gates pass in v5.
-P2-06 remains open: whether the measured token reduction justifies custom v0 work
-requires a product decision under SPEC §11.4(5). Full v0 has not started.
-See the [decision packet](evidence/STAGE0_DECISION_2026-10-19.md),
-[component report](evidence/STAGE0_COMPONENTS_2026-10-19.md),
-[v4 report](evidence/STAGE0_PILOT_V4_2026-10-19.md),
-[v5 report](evidence/STAGE0_PILOT_V5_2026-10-19.md), and
-[recovery record](evidence/RECOVERY_2026-10-19.md).
+The owner approved proceeding with the custom v0 after reviewing equal initial
+completion counts and the observed reduction in input tokens. The implementation
+target is compact contexts, reliable recovery and deterministic verification.
+P3–P7 remain subject to objective evidence; no general coding superiority or v0
+acceptance is claimed. See the [decision record](evidence/STAGE0_DECISION_2026-10-19.md).
 
 ## How to use this checklist
 
@@ -125,9 +119,9 @@ v4 edit-envelope failure is addressed by a separately registered flat tool inter
 - [x] **P2-05** Repeat the preselected subset, classify failures and report task-level unrecoverable error rates, regressions, time/tokens and context/caching effects. **Accept:** raw outputs, summary and clear small-sample uncertainty.
   Evidence: `225510a894a5c7d1a86d2523d7545e6ded120071` | `pilot-v4-01` | 18 preselected repeats complete; rates/usage in v4 report; no isolated cache ablation | [report](evidence/STAGE0_PILOT_V4_2026-10-19.md) | reviewed 2026-10-19T21:30:39Z
   Corrective evidence for P2-03–05: `832f9fae6c39f99bac7c709b13ab2828f0edcbb7` | `scripts/run_pilot_v5.py` with frozen digest `c04da250ab2f317ff8f4dabef3f18d91530e75811d6ed5a68f730e89ade87307` | 42 runs complete; original tasks/oracles retained; v5 is a different registered condition | [report](evidence/STAGE0_PILOT_V5_2026-10-19.md) | reviewed 2026-10-19T21:39:48.581736+00:00
-- [ ] **P2-06** **STAGE 0 GO/NO-GO DECISION.** Apply frozen policy in `SPEC.md` §11.4. **Accept:** signed-off proceed/change-model/change-tools/stop decision with evidence; no claim of superiority from a tiny sample.
+- [x] **P2-06** **STAGE 0 GO/NO-GO DECISION.** Apply frozen policy in `SPEC.md` §11.4. **Accept:** signed-off proceed/change-model/change-tools/stop decision with evidence; no claim of superiority from a tiny sample.
 
-  Decision checkpoint: technical review complete; owner/product decision pending. All three initial arms score 6/8; the loop uses fewer reported input tokens but has no completion-count advantage. See the [concrete decision packet](evidence/STAGE0_DECISION_2026-10-19.md). No Stage 0 go or owner acceptance is claimed.
+  Decision: owner approved custom v0 in this session (“Ok. Let's do that.”) after reviewing the decision packet. Compact context usage and reliable recovery are the selected product goals. Numeric benchmark outcomes are unchanged; this is implementation authorization, not v0 acceptance. | 2026-10-19T22:26:54.990591+00:00
 
 ## P3 — v0 deterministic coordinator and model interface (depends on P2-06 go)
 
