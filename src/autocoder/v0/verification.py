@@ -12,6 +12,9 @@ from autocoder.v0.workspace import safe_file
 
 PYTHON_DRIVER = """import importlib, json, sys
 sys.path.insert(0, "/work")
+sys.path.insert(0, "/work/src")
+sys.path.insert(0, "/toolchain/lib/python3.12/site-packages")
+sys.path.insert(0, "/toolchain")
 module, function = sys.argv[1].rsplit(".", 1)
 try:
     value = getattr(importlib.import_module(module), function)(*json.loads(sys.argv[2]))
@@ -152,6 +155,10 @@ class VerificationRunner:
                 tree = self.copy(root)
                 runtime = None
                 if oracle.language == "python":
+                    if oracle.runtime:
+                        if directory_digest(oracle.runtime) != oracle.runtime_sha256:
+                            raise NeedsUser("Private checker runtime changed")
+                        runtime = oracle.runtime.resolve()
                     command = ["/usr/bin/python3", "-I", "-c", PYTHON_DRIVER, oracle.entry]
                 else:
                     if oracle.driver is None:

@@ -102,6 +102,8 @@ class Oracle(Strict):
     cases_file: Path
     # Trusted Rust driver accepts arguments and emits JSON; contains no expected values.
     driver: Path | None = None
+    runtime: Path | None = None
+    runtime_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
 class Project(Strict):

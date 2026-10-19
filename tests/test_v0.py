@@ -485,7 +485,10 @@ def test_full_loop_resume_after_sigkill_preserves_baseline_and_does_not_repeat_e
 
 
 def test_inline_rust_tests_are_preserved_without_extra_file_approval(tmp_path):
-    source = "pub fn value() -> i32 { 1 }\n#[cfg(test)]\nmod tests { #[test] fn correct() { assert_eq!(super::value(), 2); } }\n"
+    source = (
+        "pub fn value() -> i32 { 1 }\n#[cfg(test)]\n"
+        "mod tests { #[test] fn correct() { assert_eq!(super::value(), 2); } }\n"
+    )
     with Fixture({"lib.rs": source}) as fixture:
         project = project_for(
             fixture.repository, tmp_path, readable_paths=["lib.rs"], editable_paths=["lib.rs"]
