@@ -1,0 +1,400 @@
+{
+  "py-chunks": {
+    "cases": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          2
+        ],
+        "expected": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5
+          ]
+        ]
+      },
+      {
+        "args": [
+          [],
+          2
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            1,
+            2
+          ],
+          2
+        ],
+        "expected": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      {
+        "args": [
+          [
+            1
+          ],
+          0
+        ],
+        "exception": "ValueError"
+      }
+    ]
+  },
+  "py-clamp": {
+    "cases": [
+      {
+        "args": [
+          -2,
+          0,
+          5
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          9,
+          0,
+          5
+        ],
+        "expected": 5
+      },
+      {
+        "args": [
+          3,
+          0,
+          5
+        ],
+        "expected": 3
+      },
+      {
+        "args": [
+          2,
+          2,
+          2
+        ],
+        "expected": 2
+      },
+      {
+        "args": [
+          1,
+          3,
+          2
+        ],
+        "exception": "ValueError"
+      }
+    ]
+  },
+  "py-config": {
+    "cases": [
+      {
+        "args": [
+          {
+            "enabled": "false"
+          }
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          {
+            "enabled": " YES "
+          }
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          {}
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          {
+            "enabled": "0"
+          }
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          {
+            "enabled": "perhaps"
+          }
+        ],
+        "exception": "ValueError"
+      },
+      {
+        "args": [
+          "true"
+        ],
+        "entry": "parser.parse_bool",
+        "expected": true
+      },
+      {
+        "args": [
+          " no "
+        ],
+        "entry": "parser.parse_bool",
+        "expected": false
+      },
+      {
+        "args": [
+          "1"
+        ],
+        "entry": "parser.parse_bool",
+        "expected": true
+      },
+      {
+        "args": [
+          "FALSE"
+        ],
+        "entry": "parser.parse_bool",
+        "expected": false
+      }
+    ]
+  },
+  "py-dedupe": {
+    "cases": [
+      {
+        "args": [
+          [
+            3,
+            1,
+            3,
+            2,
+            1
+          ]
+        ],
+        "expected": [
+          3,
+          1,
+          2
+        ]
+      },
+      {
+        "args": [
+          [
+            [
+              1
+            ],
+            [
+              2
+            ],
+            [
+              1
+            ]
+          ]
+        ],
+        "expected": [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": []
+      }
+    ]
+  },
+  "rs-clamp": {
+    "cases": [
+      {
+        "args": [
+          -2,
+          0,
+          5
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          9,
+          0,
+          5
+        ],
+        "expected": 5
+      },
+      {
+        "args": [
+          3,
+          0,
+          5
+        ],
+        "expected": 3
+      },
+      {
+        "args": [
+          2,
+          2,
+          2
+        ],
+        "expected": 2
+      },
+      {
+        "args": [
+          1,
+          3,
+          2
+        ],
+        "exception": "panic"
+      }
+    ]
+  },
+  "rs-config": {
+    "cases": [
+      {
+        "args": [
+          "false"
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          " YES "
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          "0"
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          "perhaps"
+        ],
+        "expected": null
+      },
+      {
+        "args": [
+          "true",
+          "parser"
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          " no ",
+          "parser"
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          "1",
+          "parser"
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          "FALSE",
+          "parser"
+        ],
+        "expected": false
+      }
+    ]
+  },
+  "rs-divceil": {
+    "cases": [
+      {
+        "args": [
+          0,
+          3
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          7,
+          3
+        ],
+        "expected": 3
+      },
+      {
+        "args": [
+          6,
+          3
+        ],
+        "expected": 2
+      },
+      {
+        "args": [
+          18446744073709551615,
+          2
+        ],
+        "expected": 9223372036854775808
+      },
+      {
+        "args": [
+          1,
+          0
+        ],
+        "exception": "panic"
+      }
+    ]
+  },
+  "rs-ranges": {
+    "cases": [
+      {
+        "args": [
+          1,
+          4,
+          4
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          1,
+          4,
+          1
+        ],
+        "expected": true
+      },
+      {
+        "args": [
+          1,
+          1,
+          1
+        ],
+        "expected": false
+      },
+      {
+        "args": [
+          4,
+          1,
+          2
+        ],
+        "expected": false
+      }
+    ]
+  }
+}
