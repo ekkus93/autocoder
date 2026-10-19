@@ -710,3 +710,30 @@ def test_control_character_paths_and_coerced_orientation_fields_are_rejected():
     }
     with pytest.raises(ValueError):
         Orientation.model_validate_json(json.dumps(value))
+
+
+def test_checkpoint_overrun_cannot_be_reported_as_verified(tmp_path, monkeypatch):
+    import autocoder.v0.coordinator as coordinator_module
+
+    captured = []
+
+    class CapturedBudget(TaskBudget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            captured.append(self)
+
+    original = Workspace.checkpoint
+
+    def late_checkpoint(workspace):
+        result = original(workspace)
+        captured[0].started -= workspace.project.limits.wall_seconds + 1
+        return result
+
+    monkeypatch.setattr(coordinator_module, "TaskBudget", CapturedBudget)
+    monkeypatch.setattr(Workspace, "checkpoint", late_checkpoint)
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        result = start(project, "Fix greet", transport=fake_model([]), metadata=False)
+        assert result["status"] == "BUDGET_EXHAUSTED", result
+        assert result["task_commit"] != result["base_sha"]
+        assert (fixture.repository / "greeting.py").read_text() == SOURCE

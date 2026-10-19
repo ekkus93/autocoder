@@ -313,6 +313,7 @@ class Coordinator:
                             "Checks passed without a source change; inspect reproducer stability"
                         )
                     self.workspace.checkpoint()
+                    _ = self.budget.remaining_seconds
                     result["status"] = str(Outcome.VERIFIED_LOCAL)
                     break
                 self.budget.consume(repairs=1)
