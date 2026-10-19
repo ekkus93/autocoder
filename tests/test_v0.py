@@ -632,3 +632,61 @@ def test_native_tool_observations_remain_in_phase_without_cross_phase_transcript
             ["system", "user", "assistant", "tool"],
             ["system", "user", "assistant", "tool", "assistant", "tool"],
         ]
+
+
+def test_policy_protects_rust_tests_configuration_and_explicit_protected_paths(tmp_path):
+    from autocoder.v0.schema import protected
+
+    for name in ("src/widget_test.rs", "src/tests.rs", "ruff.toml", "custom.yaml", "check.cfg"):
+        assert protected(name)
+    assert not protected("src/lib.rs")
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        with pytest.raises(ValueError, match="approval"):
+            project_for(fixture.repository, tmp_path, protected_paths=["greeting.py"])
+        project_for(
+            fixture.repository,
+            tmp_path,
+            protected_paths=["greeting.py"],
+            approved_test_paths=["greeting.py"],
+        )
+
+
+def test_private_oracle_imports_candidate_before_approved_runtime(tmp_path):
+    from autocoder.v0.verification import directory_digest
+
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "greeting.py").write_text('def greet(name):\n    return "SHADOW"\n')
+    private = tmp_path / "private.json"
+    private.write_text('[{"args":["Q"],"expected":"Hello, Q!"}]')
+    with Fixture({"greeting.py": FIXED}) as fixture:
+        project = project_for(
+            fixture.repository,
+            tmp_path,
+            oracles=[
+                Oracle(
+                    language="python",
+                    entry="greeting.greet",
+                    cases_file=private,
+                    runtime=runtime,
+                    runtime_sha256=directory_digest(runtime),
+                )
+            ],
+        )
+        journal, workspace = task(project)
+        records = VerificationRunner(workspace, Budget(project.limits)).held_out()
+        assert records and all(r["pass"] for r in records)
+        with pytest.raises(ValueError, match="expose"):
+            project_for(
+                fixture.repository,
+                tmp_path,
+                oracles=[
+                    Oracle(
+                        language="python",
+                        entry="greeting.greet",
+                        cases_file=private,
+                        runtime=tmp_path,
+                        runtime_sha256="0" * 64,
+                    )
+                ],
+            )

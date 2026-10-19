@@ -66,7 +66,21 @@ def protected(name: str) -> bool:
     return (
         any(p in {"tests", "test", ".github", ".gitlab", ".serena"} for p in parts)
         or base.startswith(("test_", ".env"))
-        or base.endswith(("_test.py", ".lock", ".pem", ".key"))
+        or base.endswith(
+            (
+                "_test.py",
+                "_test.rs",
+                ".toml",
+                ".yaml",
+                ".yml",
+                ".ini",
+                ".cfg",
+                ".lock",
+                ".pem",
+                ".key",
+            )
+        )
+        or base == "tests.rs"
         or base
         in {
             "agents.md",
@@ -136,6 +150,7 @@ class Project(Strict):
     readable_paths: list[str] = Field(min_length=1, max_length=64)
     editable_paths: list[str] = Field(min_length=1, max_length=32)
     approved_test_paths: list[str] = Field(default_factory=list, max_length=16)
+    protected_paths: list[str] = Field(default_factory=list, max_length=128)
     checks: list[Check] = Field(min_length=1, max_length=12)
     oracles: list[Oracle] = Field(default_factory=list, max_length=4)
     preparation: Preparation | None = None
@@ -170,12 +185,19 @@ class Project(Strict):
             raise ValueError("Use an HTTP(S) origin without embedded credentials")
         if not re.fullmatch(r"[a-zA-Z0-9._:/-]+", self.model):
             raise ValueError("Invalid model identifier")
-        for name in self.readable_paths + self.editable_paths + self.approved_test_paths:
+        for name in (
+            self.readable_paths
+            + self.editable_paths
+            + self.approved_test_paths
+            + self.protected_paths
+        ):
             relative(name)
         if not set(self.editable_paths) <= set(self.readable_paths):
             raise ValueError("Editable paths must also be readable")
         for name in self.editable_paths:
-            if protected(name) and name not in self.approved_test_paths:
+            if (
+                protected(name) or name in self.protected_paths
+            ) and name not in self.approved_test_paths:
                 raise ValueError(f"Explicit test/config approval required: {name}")
         if len({check.name for check in self.checks}) != len(self.checks):
             raise ValueError("Duplicate check name")
@@ -185,6 +207,21 @@ class Project(Strict):
                     not path.is_absolute() or path.resolve().is_relative_to(repo)
                 ):
                     raise ValueError("Private acceptance assets must be outside the repository")
+        runtimes = [check.runtime for check in self.checks if check.runtime]
+        runtimes += [oracle.runtime for oracle in self.oracles if oracle.runtime]
+        if self.serena_runtime:
+            runtimes.append(self.serena_runtime)
+        for runtime in runtimes:
+            if not runtime.is_absolute():
+                raise ValueError("Runtime paths must be absolute")
+            if repo.is_relative_to(runtime.resolve()) or state.is_relative_to(runtime.resolve()):
+                raise ValueError("A runtime mount must not expose the project or application state")
+            for oracle in self.oracles:
+                if any(
+                    path and path.resolve().is_relative_to(runtime.resolve())
+                    for path in [oracle.cases_file, oracle.driver]
+                ):
+                    raise ValueError("A runtime mount would expose private acceptance assets")
         return self
 
     @property

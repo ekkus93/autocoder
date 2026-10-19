@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--private-cases", type=Path, required=True)
+    parser.add_argument("--task", choices=["rust-tests", "path-del"], default="rust-tests")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     output = args.output.resolve()
@@ -27,13 +28,43 @@ def main():
         'assert protected("src/tests.rs"), "rust test protection regression"; '
         'assert not protected("src/lib.rs"), "production source incorrectly protected"'
     )
+    signature = "rust test protection regression"
+    entry = "autocoder.v0.schema.protected"
+    request_text = (
+        "Fix autocoder.v0.schema.protected: Rust files named tests.rs or ending "
+        "in _test.rs must require explicit test approval, even outside a tests directory. "
+        "Preserve existing Python/config protection and keep ordinary Rust source editable. "
+        "Only update src/autocoder/v0/schema.py. Run all configured checks."
+    )
+    if args.task == "path-del":
+        signature = "DEL path regression"
+        entry = "autocoder.v0.schema.relative"
+        public = """
+import sys
+sys.path[:0]=['/work/src','/toolchain']
+from autocoder.v0.schema import relative
+try:
+    relative('src/a'+chr(127)+'b.py')
+except ValueError:
+    pass
+else:
+    raise AssertionError('DEL path regression')
+assert relative('src/module.py') == 'src/module.py'
+"""
+        request_text = (
+            "Fix autocoder.v0.schema.relative so all ASCII control characters, including "
+            "DEL (U+007F), are rejected in project paths. Preserve other path safety checks "
+            "and valid Unicode file names. Only edit src/autocoder/v0/schema.py; "
+            "run every named check."
+        )
     private = output / "private-cases.json"
     cases_bytes = args.private_cases.read_bytes()
     write_json(private, json.loads(cases_bytes))
     write_json(
         output / "registration.json",
         {
-            "fixture_version": 2,
+            "fixture_version": 2 if args.task == "rust-tests" else 1,
+            "task": args.task,
             "rationale": "Correct an acceptance expectation contradicting preserved base behavior; "
             "keep private case data outside the target repository and generator source.",
             "private_cases_sha256": digest(cases_bytes),
@@ -52,7 +83,7 @@ def main():
                 command=["/usr/bin/python3", "-I", "-c", public],
                 runtime=runtime,
                 runtime_sha256=runtime_hash,
-                regression_pattern="rust test protection regression",
+                regression_pattern=signature,
             ),
             Check(
                 name="compile",
@@ -69,7 +100,7 @@ def main():
         oracles=[
             Oracle(
                 language="python",
-                entry="autocoder.v0.schema.protected",
+                entry=entry,
                 cases_file=private,
                 runtime=runtime,
                 runtime_sha256=runtime_hash,
@@ -79,12 +110,7 @@ def main():
     config = output / "project.json"
     write_json(config, policy.model_dump(mode="json"))
     request = output / "request.txt"
-    request.write_text(
-        "Fix autocoder.v0.schema.protected: Rust files named tests.rs or ending "
-        "in _test.rs must require explicit test approval, even outside a tests directory. "
-        "Preserve existing Python/config protection and keep ordinary Rust source editable. "
-        "Only update src/autocoder/v0/schema.py. Run all configured checks."
-    )
+    request.write_text(request_text)
     before = subprocess.check_output(["git", "-C", str(root), "status", "--porcelain"], text=True)
     with (output / "events.jsonl").open("w") as events:
         result = subprocess.run(

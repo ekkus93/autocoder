@@ -11,10 +11,7 @@ from autocoder.v0.journal import NeedsUser
 from autocoder.v0.workspace import safe_file
 
 PYTHON_DRIVER = """import importlib, json, sys
-sys.path.insert(0, "/work")
-sys.path.insert(0, "/work/src")
-sys.path.insert(0, "/toolchain/lib/python3.12/site-packages")
-sys.path.insert(0, "/toolchain")
+sys.path[:0] = ["/work/src", "/work", "/toolchain/lib/python3.12/site-packages", "/toolchain"]
 module, function = sys.argv[1].rsplit(".", 1)
 try:
     value = getattr(importlib.import_module(module), function)(*json.loads(sys.argv[2]))
