@@ -13,6 +13,7 @@ from autocoder.v0.verification import directory_digest
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--private-cases", type=Path, required=True)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     output = args.output.resolve()
@@ -27,15 +28,17 @@ def main():
         'assert not protected("src/lib.rs"), "production source incorrectly protected"'
     )
     private = output / "private-cases.json"
+    cases_bytes = args.private_cases.read_bytes()
+    write_json(private, json.loads(cases_bytes))
     write_json(
-        private,
-        [
-            {"args": ["nested/matcher_test.rs"], "expected": True},
-            {"args": ["engine/tests.rs"], "expected": True},
-            {"args": ["tests/test_unit.py"], "expected": True},
-            {"args": ["src/test_helpers.rs"], "expected": False},
-            {"args": ["src/contest.rs"], "expected": False},
-        ],
+        output / "registration.json",
+        {
+            "fixture_version": 2,
+            "rationale": "Correct an acceptance expectation contradicting preserved base behavior; "
+            "keep private case data outside the target repository and generator source.",
+            "private_cases_sha256": digest(cases_bytes),
+            "source_script_sha256": digest(Path(__file__).read_bytes()),
+        },
     )
     policy = Project(
         repository=root,

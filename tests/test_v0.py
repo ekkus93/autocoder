@@ -188,7 +188,9 @@ def test_gateway_phase_scope_hash_and_repetition_limits(tmp_path):
 
 def test_usage_reservations_survive_restart_and_cancellation(tmp_path):
     with Fixture({"greeting.py": SOURCE}) as fixture:
-        project = project_for(fixture.repository, tmp_path)
+        project = project_for(
+            fixture.repository, tmp_path, endpoint="http://reservation-test.invalid"
+        )
         journal, workspace = task(project)
         budget = TaskBudget(project.limits, journal)
         budget.consume(request_tokens=100, output_tokens=50)
@@ -577,3 +579,56 @@ def test_one_fresh_replan_after_two_public_failures(tmp_path):
         rows = journal_for(project, result["task_id"]).read()
         assert len([r for r in rows if r["kind"] == "REPLAN"]) == 1
         assert result["usage"]["repairs"] == 2
+
+
+def test_native_tool_observations_remain_in_phase_without_cross_phase_transcripts(tmp_path):
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        seen = []
+        base = fake_model(seen)
+        stages = []
+
+        async def transport(endpoint, model, messages, budget, **kwargs):
+            body = json.loads(messages[1]["content"])
+            if body["phase"] != "IMPLEMENT":
+                assert len(messages) == 2
+                return await base(endpoint, model, messages, budget, **kwargs)
+            stages.append([m["role"] for m in messages])
+            tools = [m for m in messages if m["role"] == "tool"]
+            if not tools:
+                name = "read_file_range"
+                args = {"path": "greeting.py", "start": 1, "end": 2}
+            elif len(tools) == 1:
+                assert tools[0]["tool_name"] == "read_file_range"
+                source = json.loads(tools[0]["content"])
+                name = "apply_edit"
+                args = {
+                    "path": "greeting.py",
+                    "old": SOURCE.rstrip(),
+                    "new": FIXED.rstrip(),
+                    "expected_sha256": source["sha256"],
+                }
+            else:
+                assert tools[-1]["tool_name"] == "apply_edit"
+                return {
+                    "message": {"content": "Ready"},
+                    "prompt_tokens": 0,
+                    "output_tokens": 0,
+                    "finished": True,
+                    "truncated": False,
+                }
+            return {
+                "message": {"tool_calls": [{"function": {"name": name, "arguments": args}}]},
+                "prompt_tokens": 0,
+                "output_tokens": 0,
+                "finished": True,
+                "truncated": False,
+            }
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "VERIFIED_LOCAL", result
+        assert stages == [
+            ["system", "user"],
+            ["system", "user", "assistant", "tool"],
+            ["system", "user", "assistant", "tool", "assistant", "tool"],
+        ]
