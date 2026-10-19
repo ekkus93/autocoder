@@ -1,11 +1,15 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** Not started; evidence-driven implementation checklist  
+**Status:** Foundation in progress; sandbox qualification blocked by host AppArmor policy
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
 
 > **Rules for execution:** Work dependency-first. Never mark an item complete merely because code exists or a model reports success. Add commit SHA, pinned version, test command/result and evidence path for every completed milestone. Do not claim real hardware/CI/human acceptance without real evidence. Stage 0 is a hard gate; do not build the full v0 or TUI before viability is established. Microsoft Agent Framework is optional; Ralph Bridge, paid API dependencies, VS Code integration and mandatory Docker/Podman are excluded.
+
+## Current execution checkpoint
+
+Completed P0-01–P0-03 and the P1D-01 host diagnostic. P0-04–P0-08 have partial foundation support and remain unchecked. Host AppArmor denies bubblewrap namespace setup; assistance is needed before sandbox qualification and candidate scoring. See the [evidence report](evidence/STAGE0_FOUNDATION_2026-10-19.md) for exact revisions, commands, artifacts, and the resumption steps. Full v0 development remains behind Stage 0.
 
 ## How to use this checklist
 
@@ -19,9 +23,12 @@
 
 ## P0 — Foundation and benchmark protocol (must precede scored experiments)
 
-- [ ] **P0-01** Create the Python/`uv` repository skeleton, lint/test configuration, permissive application license selected deliberately, README, and runnable smoke test. **Accept:** native Ubuntu installation without Docker/Podman; CI/local smoke test documented.
-- [ ] **P0-02** Implement a headless experiment CLI and versioned JSON/JSONL result format; TUI is not a dependency. **Accept:** one command runs a fixture and writes reproducible machine-readable results.
-- [ ] **P0-03** Build fixture manager using throwaway Git repositories/worktrees with safe cleanup and pinned base SHAs. **Accept:** identical fixture can be restored for repeated arms without contaminating the original repository.
+- [x] **P0-01** Create the Python/`uv` repository skeleton, lint/test configuration, permissive application license selected deliberately, README, and runnable smoke test. **Accept:** native Ubuntu installation without Docker/Podman; CI/local smoke test documented.
+  Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run pytest; uv run autocoder smoke` | pass; 17 tests and native smoke verified | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
+- [x] **P0-02** Implement a headless experiment CLI and versioned JSON/JSONL result format; TUI is not a dependency. **Accept:** one command runs a fixture and writes reproducible machine-readable results.
+  Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run pytest; uv run autocoder smoke` | pass; 17 tests and native smoke verified | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
+- [x] **P0-03** Build fixture manager using throwaway Git repositories/worktrees with safe cleanup and pinned base SHAs. **Accept:** identical fixture can be restored for repeated arms without contaminating the original repository.
+  Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run pytest; uv run autocoder smoke` | pass; 17 tests and native smoke verified | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
 - [ ] **P0-04** Record exact model names/digests, quantization, chat templates, Ollama and client builds, Python/Serena versions, host/GPU details, tool inventories and licenses. **Accept:** reproducibility manifest emitted before every run.
 - [ ] **P0-05** Pre-register **five micro-experiment families** and **eight end-to-end tasks** (4 Python, 4 Rust) with fixed task prompts, protected oracles, scoring scripts, model settings, allowed tools and resource caps. **Accept:** immutable versioned benchmark manifest with checksums.
 - [ ] **P0-06** Set and freeze provisional Stage 0 thresholds from `SPEC.md` §11.4 *before* scored evaluation; provide an explicit change-control process. **Accept:** scored suite will refuse an unversioned changed threshold/budget.
@@ -53,7 +60,8 @@
 
 ### P1D. Security and sandbox feasibility
 
-- [ ] **P1D-01** Test bubblewrap on target Ubuntu host with real AppArmor/user-namespace settings. **Accept:** startup result, mount/network isolation settings and repeatable probe.
+- [x] **P1D-01** Test bubblewrap on target Ubuntu host with real AppArmor/user-namespace settings. **Accept:** startup result, mount/network isolation settings and repeatable probe.
+  Evidence: `3162163b25c460842f8d6b599aa4ad8cad26b4fc` | `uv run autocoder sandbox-probe` | observed BLOCKED_ENVIRONMENT; isolation gate remains closed | [checkpoint](evidence/STAGE0_FOUNDATION_2026-10-19.md) | 2026-10-19T11:15:32.717543+00:00
 - [ ] **P1D-02** Prove the configured sandbox blocks reads of secret sentinels, writes outside worktree and disallowed network calls. **Accept:** all negative tests fail as expected, with logs.
 - [ ] **P1D-03** Define controlled dependency preparation (download/cache vs executable installation/build hooks). **Accept:** no untrusted setup hook is executed unrestricted outside isolation.
 - [ ] **P1D-04** Document a validated alternative if bubblewrap is unavailable, or explicitly constrain the product to supervised mode. **Gate:** no unattended tests/builds without proven isolation; do not bypass host security controls.
