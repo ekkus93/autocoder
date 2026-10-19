@@ -5,8 +5,8 @@ import tempfile
 from pathlib import Path
 
 from autocoder.evaluator import rust_toolchain
-from autocoder.execution import Sandbox
 from autocoder.protocol import digest, utc_now
+from autocoder.v0.isolation import TaskSandbox
 from autocoder.v0.journal import NeedsUser
 from autocoder.v0.workspace import safe_file
 
@@ -46,7 +46,11 @@ def directory_digest(root):
 class VerificationRunner:
     def __init__(self, workspace, budget, sandbox=None):
         self.workspace, self.journal, self.budget = workspace, workspace.journal, budget
-        self.sandbox = sandbox or Sandbox()
+        self.sandbox = sandbox or TaskSandbox()
+        self.dependencies = None
+        from autocoder.v0.dependencies import prepare
+
+        self.dependencies = prepare(self)
 
     def cancelled(self):
         if (self.journal.directory / "cancel").exists():
@@ -56,12 +60,17 @@ class VerificationRunner:
 
     def execute(self, root, command, *, runtime=None, timeout=30, input_text=""):
         self.cancelled()
+        if self.dependencies:
+            ready = [r for r in self.journal.read() if r["kind"] == "DEPENDENCIES_READY"]
+            if directory_digest(self.dependencies) != ready[-1]["data"]["sha256"]:
+                raise NeedsUser("Prepared dependencies changed before check")
         result = self.sandbox.execute(
             root,
             command,
             toolchain=runtime,
             timeout=min(timeout, self.budget.remaining_seconds),
             input_text=input_text,
+            readonly={"/deps": self.dependencies} if self.dependencies else None,
         )
         self.cancelled()
         _ = self.budget.remaining_seconds

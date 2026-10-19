@@ -40,12 +40,14 @@ class Coordinator:
         if self.gateway:
             self.gateway.enter(target)
 
-    async def structured(self, schema, request, evidence, *, handoff=None, validate=None):
+    async def structured(
+        self, schema, request, evidence, *, handoff=None, validate=None, schema_override=None
+    ):
         error = None
         for attempt in range(2):
             messages = self.builder.build(self.phase, request, evidence, handoff, error)
             message = await self.model.request(
-                messages, schema=schema.model_json_schema(), output=1024
+                messages, schema=schema_override or schema.model_json_schema(), output=1024
             )
             try:
                 value = schema.model_validate_json(message.get("content", ""))
@@ -123,6 +125,7 @@ class Coordinator:
             },
         }
         evidence["baseline_diagnostic"] = diagnostic(baseline)
+        evidence["required_check_names"] = [c.name for c in self.project.checks]
         if any(evidence["files"][f.path]["sha256"] != f.sha256 for f in findings.findings):
             raise NeedsUser("Orientation became stale before planning")
 
@@ -137,8 +140,21 @@ class Coordinator:
             if set(plan.checks) != {c.name for c in self.project.checks}:
                 raise ValueError("Plan must preserve all configured named checks")
 
+        schema = Plan.model_json_schema()
+        schema["properties"]["checks"]["items"] = {
+            "type": "string",
+            "enum": evidence["required_check_names"],
+        }
+        schema["properties"]["checks"].update(
+            minItems=len(self.project.checks), maxItems=len(self.project.checks)
+        )
         return await self.structured(
-            Plan, task, evidence, handoff=findings.model_dump(), validate=validate
+            Plan,
+            task,
+            evidence,
+            handoff=findings.model_dump(),
+            validate=validate,
+            schema_override=schema,
         )
 
     async def implement(self, task, plan, failure):

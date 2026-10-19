@@ -106,6 +106,26 @@ class Oracle(Strict):
     runtime_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
+class DependencyArtifact(Strict):
+    name: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$")
+    url: str = Field(max_length=2048)
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    max_bytes: int = Field(default=16_000_000, gt=0, le=64_000_000)
+
+
+class Preparation(Strict):
+    artifacts: list[DependencyArtifact] = Field(min_length=1, max_length=8)
+    command: list[str] = Field(min_length=1, max_length=32)
+    language: str = Field(default="python", pattern=r"^(python|rust)$")
+    timeout: float = Field(default=60, gt=0, le=120)
+
+    @model_validator(mode="after")
+    def unique(self):
+        if len({a.name for a in self.artifacts}) != len(self.artifacts):
+            raise ValueError("Dependency artifact names must be unique")
+        return self
+
+
 class Project(Strict):
     repository: Path
     state_dir: Path
@@ -118,6 +138,7 @@ class Project(Strict):
     approved_test_paths: list[str] = Field(default_factory=list, max_length=16)
     checks: list[Check] = Field(min_length=1, max_length=12)
     oracles: list[Oracle] = Field(default_factory=list, max_length=4)
+    preparation: Preparation | None = None
     serena: bool = False
     serena_runtime: Path | None = None
     serena_runtime_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")

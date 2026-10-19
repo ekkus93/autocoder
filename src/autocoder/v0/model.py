@@ -6,6 +6,7 @@ import json
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 
 from autocoder.budget import Budget, BudgetExhausted
 from autocoder.inference import infer
@@ -86,13 +87,18 @@ class ModelBackend:
             },
         )
         # Per-origin interprocess lock prevents project processes overbooking one endpoint.
-        locks = private_directory(self.project.state_dir.resolve() / "endpoint-locks")
+        locks = private_directory(Path.home() / ".local/share/autocoder/inference-locks")
         name = digest(self.project.endpoint.rstrip("/").encode()) + ".lock"
         fd = os.open(locks / name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        acquired = False
         try:
             while True:
                 try:
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    acquired = True
+                    self.journal.emit(
+                        "INFERENCE_ACQUIRED", data={"lock_key": name, "monotonic": time.monotonic()}
+                    )
                     break
                 except BlockingIOError:
                     _ = self.budget.remaining_seconds
@@ -135,4 +141,10 @@ class ModelBackend:
                 raise BudgetExhausted("Model response incomplete or output allowance exhausted")
             return result["message"]
         finally:
-            os.close(fd)
+            try:
+                if acquired:
+                    self.journal.emit(
+                        "INFERENCE_RELEASED", data={"lock_key": name, "monotonic": time.monotonic()}
+                    )
+            finally:
+                os.close(fd)
