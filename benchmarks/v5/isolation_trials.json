@@ -1,0 +1,17 @@
+{
+  "framework_spike": [
+    "ollama",
+    "mcp",
+    "fresh_context",
+    "structured_output"
+  ],
+  "required": [
+    "secret_read",
+    "outside_write",
+    "network",
+    "oracle_read",
+    "test_tampering",
+    "process_timeout",
+    "output_limit"
+  ]
+}
