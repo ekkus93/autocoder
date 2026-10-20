@@ -23,49 +23,57 @@ def test_report_phase(tmp_path):
     with Fixture({"module.py": "VALUE = 1\n"}) as fixture:
         config, journal, evidence = setup_task(tmp_path, fixture.repository)
         client = CommandClient(config)
-        
+
         # Initial report with phase
-        initial_report = json.dumps({
-            "task_id": "b" * 32,
-            "phase": "INIT",
-            "status": "running",
-            "data": {"tool": "init"},
-            "evidence_ref": None
-        })
+        initial_report = json.dumps(
+            {
+                "task_id": "b" * 32,
+                "phase": "INIT",
+                "status": "running",
+                "data": {"tool": "init"},
+                "evidence_ref": None,
+            }
+        )
         client.consume(initial_report)
         assert client.phase == "INIT"
         assert client.status == "running"
-        
+
         # Missing-phase report should preserve previous phase
-        missing_phase = json.dumps({
-            "task_id": "b" * 32,
-            "status": "running",
-            "data": {"tool": "update"},
-            "evidence_ref": None
-        })
+        missing_phase = json.dumps(
+            {
+                "task_id": "b" * 32,
+                "status": "running",
+                "data": {"tool": "update"},
+                "evidence_ref": None,
+            }
+        )
         client.consume(missing_phase)
         assert client.phase == "INIT", f"Phase should be preserved: {client.phase}"
-        
+
         # Event report updates phase
-        event_report = json.dumps({
-            "event_id": "evt1",
-            "task_id": "b" * 32,
-            "phase": "CHECK",
-            "kind": "CHECK",
-            "status": "pass",
-            "data": {"tool": "check"},
-            "evidence_ref": None
-        })
+        event_report = json.dumps(
+            {
+                "event_id": "evt1",
+                "task_id": "b" * 32,
+                "phase": "CHECK",
+                "kind": "CHECK",
+                "status": "pass",
+                "data": {"tool": "check"},
+                "evidence_ref": None,
+            }
+        )
         client.consume(event_report)
         assert client.phase == "CHECK"
-        
+
         # Another non-event report should preserve phase
-        another_non_event = json.dumps({
-            "task_id": "b" * 32,
-            "status": "running",
-            "data": {"tool": "more"},
-            "evidence_ref": None
-        })
+        another_non_event = json.dumps(
+            {
+                "task_id": "b" * 32,
+                "status": "running",
+                "data": {"tool": "more"},
+                "evidence_ref": None,
+            }
+        )
         client.consume(another_non_event)
         assert client.phase == "CHECK", f"Phase should be preserved: {client.phase}"
 
