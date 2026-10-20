@@ -7,6 +7,16 @@ two projects sharing that endpoint are verified. Scope and
 dependency gates are defined in [docs/SPEC.md](docs/SPEC.md) and
 [docs/TODO.md](docs/TODO.md).
 
+## Terminal interface
+
+```sh
+uv run autocoder-tui --config /path/to/reviewed-project.json
+```
+
+Enter tasks, watch progress, inspect diffs/evidence, stop/resume, and record human
+decisions. See the [task guide](docs/V0.md#terminal-interface) for configuration and
+keys, and the [optional CI client](docs/CI.md) for reviewed workflow dispatches.
+
 ## Development
 
 Native Ubuntu requires Git, Python 3.12+ and `uv`; Docker/Podman are unnecessary.

@@ -17,6 +17,8 @@ dependencies = [
 [project.scripts]
 autocoder = "autocoder.cli:main"
 autocoder-task = "autocoder.v0.cli:main"
+autocoder-tui = "autocoder.v0.tui:main"
+autocoder-ci = "autocoder.v0.ci:main"
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.14,<1"]

@@ -1,0 +1,33 @@
+name: Verify autocoder
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autocoder-verification-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    # Requires the same user-namespace, cgroup and systemd-user qualification as local tests.
+    runs-on: [self-hosted, Linux, X64, autocoder-sandbox]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install locked environment
+        run: uv sync --locked
+      - name: Qualify sandbox
+        run: >-
+          uv run autocoder sandbox-probe
+          --output "$RUNNER_TEMP/autocoder-probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+      - name: Lint
+        run: uv run ruff check .
+      - name: Check formatting
+        run: uv run ruff format --check .
+      - name: Test complete suite
+        run: uv run pytest -q

@@ -183,8 +183,9 @@ frozen registrations. No superiority claim follows from four successful v0 tasks
 
 P6-07/P7-05 satisfy the revised SPEC 1.1 local acceptance scope. The distinct-server
 portion of P7-02 and remote/two-server P7-04 acceptance remain deferred, not passed.
-P8 work has not started. Remote CI, hardware and human acceptance of generated task
-patches remain separate from this local milestone.
+At this v0 evidence checkpoint, P8 work had not started; subsequent progress is
+tracked in [TODO.md](../TODO.md). Remote CI, hardware and human acceptance of
+generated task patches remain separate from this local milestone.
 
 ## Reproduction and artifact inventory
 

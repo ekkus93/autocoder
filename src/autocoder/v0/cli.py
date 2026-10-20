@@ -109,6 +109,7 @@ def main(argv=None):
         "status",
         "diff",
         "events",
+        "evidence",
         "cancel",
         "approve",
         "refuse",
@@ -116,6 +117,8 @@ def main(argv=None):
     ):
         command = commands.add_parser(name)
         command.add_argument("task_id")
+        if name == "evidence":
+            command.add_argument("--ref", help="Content-addressed evidence SHA-256")
         if name == "events":
             command.add_argument("--follow", action="store_true")
     args = parser.parse_args(argv)
@@ -141,6 +144,23 @@ def main(argv=None):
                     if not args.follow or (rows and rows[-1]["kind"] == "FINAL"):
                         return 0
                     time.sleep(0.2)
+            if args.command == "evidence":
+                if args.ref:
+                    result = {"task_id": args.task_id, "evidence": journal.load(args.ref)}
+                else:
+                    result = {
+                        "task_id": args.task_id,
+                        "references": [
+                            {
+                                key: row[key]
+                                for key in ("event_id", "kind", "status", "evidence_ref")
+                            }
+                            for row in journal.read()
+                            if row["evidence_ref"]
+                        ][-64:],
+                    }
+                print(json.dumps(result, sort_keys=True), flush=True)
+                return 0
             if args.command == "cancel":
                 fd = os.open(
                     journal.directory / "cancel", os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600
