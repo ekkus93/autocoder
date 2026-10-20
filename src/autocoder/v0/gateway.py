@@ -74,16 +74,39 @@ class ToolGateway:
         focused = set()
         if request:
             identifiers = set(re.findall(r"[A-Za-z_]\w{2,}", request))
+            qualified = set(re.findall(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+", request))
             for name in selected:
                 _, data = safe_file(self.workspace.root, name)
                 if name.endswith(".py"):
                     try:
-                        nodes = [
-                            n
-                            for n in ast.walk(ast.parse(data))
-                            if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
-                            and n.name in identifiers
-                        ]
+                        tree = ast.parse(data)
+                        parents = {
+                            child: node
+                            for node in ast.walk(tree)
+                            for child in ast.iter_child_nodes(node)
+                        }
+                        nodes = []
+                        explicit = []
+                        for node in ast.walk(tree):
+                            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                                continue
+                            if node.name in identifiers:
+                                nodes.append(node)
+                            scope = [node.name]
+                            parent = parents.get(node)
+                            while parent is not None:
+                                if isinstance(
+                                    parent, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+                                ):
+                                    scope.append(parent.name)
+                                parent = parents.get(parent)
+                            symbol_name = ".".join(reversed(scope))
+                            if any(
+                                token == symbol_name or token.endswith("." + symbol_name)
+                                for token in qualified
+                            ):
+                                explicit.append(node)
+                        nodes = explicit or nodes
                     except SyntaxError:
                         nodes = []
                     if len(nodes) == 1:

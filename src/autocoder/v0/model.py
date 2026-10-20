@@ -63,17 +63,26 @@ class ModelBackend:
         self.project, self.journal, self.budget = project, journal, budget
         self.transport = transport
 
+    def allocation(self, messages, *, schema=None, tools=None, output=1024):
+        allowance = min(
+            output, self.project.limits.output_tokens - self.budget.snapshot().output_tokens
+        )
+        rendered = len(
+            json.dumps({"messages": messages, "tools": tools, "schema": schema}).encode()
+        )
+        return rendered, allowance
+
+    def fits_context(self, messages, *, schema=None, tools=None, output=1024):
+        rendered, allowance = self.allocation(messages, schema=schema, tools=tools, output=output)
+        return rendered + allowance + 1024 <= self.project.context * 0.8
+
     async def request(self, messages, *, schema=None, tools=None, output=1024):
         messages = json.loads(json.dumps(messages))
-        used = self.budget.snapshot()
-        allowance = min(output, self.project.limits.output_tokens - used.output_tokens)
+        rendered, allowance = self.allocation(messages, schema=schema, tools=tools, output=output)
         if allowance <= 0:
             raise BudgetExhausted("output_tokens")
         if (self.journal.directory / "cancel").exists():
             raise asyncio.CancelledError
-        rendered = len(
-            json.dumps({"messages": messages, "tools": tools, "schema": schema}).encode()
-        )
         if rendered + allowance + 1024 > self.project.context * 0.8:
             raise BudgetExhausted("context reserve; narrow source evidence before retrying")
         key = self.journal.artifact({"messages": messages, "schema": schema, "tools": tools})

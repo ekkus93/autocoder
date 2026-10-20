@@ -80,6 +80,14 @@ class Coordinator:
                 evidence,
             )
             for _ in range(4):
+                if not self.model.fits_context(messages, tools=self.gateway.tools(), output=768):
+                    self.journal.emit(
+                        "CONTEXT_RESET",
+                        data={
+                            "reason": "orientation history reached context reserve; build handoff"
+                        },
+                    )
+                    break
                 message = await self.model.request(messages, tools=self.gateway.tools(), output=768)
                 calls = message.get("tool_calls") or []
                 if not calls:
@@ -104,8 +112,16 @@ class Coordinator:
                         and "path" in observation
                         and "source" in observation
                     ):
-                        evidence["files"][observation["path"]] = observation
-                evidence["last_retrieval"] = retrieved
+                        current = evidence["files"].get(observation["path"], {})
+                        if not current.get("focused_symbol"):
+                            evidence["files"][observation["path"]] = observation
+                # Source is already in files; repeating it here can overflow the fresh handoff.
+                evidence["last_retrieval"] = [
+                    {key: observation[key] for key in ("path", "sha256", "start", "end")}
+                    if isinstance(observation, dict) and "source" in observation
+                    else observation
+                    for observation in retrieved
+                ]
 
         def validate(value):
             if value.base_sha != self.workspace.base_sha:
