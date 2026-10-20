@@ -82,7 +82,8 @@ class CommandClient:
         else:
             self.result = row
             self.task_id = row.get("task_id", self.task_id)
-            self.status = row.get("status", self.status)
+            self.phase = row.get("phase", self.phase)
+            self.status = row.get("status") or self.status
             for part in json.dumps(row, indent=2, ensure_ascii=True).splitlines():
                 self.append(part)
 
