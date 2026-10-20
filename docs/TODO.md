@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** v0 and terminal UI locally verified; hosted CI configured, first remote run pending
+**Status:** v0 and terminal UI verified; hosted push/PR CI passes with release-only artifacts
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -26,7 +26,8 @@ recorded, and P8-07's workload review retains JSONL. P8-04's CI wrapper and the
 owner-requested lint/test workflow now uses hosted Ubuntu with automatic branch/PR
 checks and artifacts only for successful `v*` tag pushes. No self-hosted runner is
 required. See the [hosted CI checkpoint](evidence/GITHUB_ACTIONS_2026-10-19.md) for
-remote qualification; the operator client still requires an approved dispatch plan.
+successful remote qualification and zero-artifact checks; the operator client
+still requires an approved dispatch plan for mutation.
 P8-02/P8-05/P8-06 remain conditional and untested, as detailed in the
 [P8 checkpoint](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md). See the
 [v0 evidence and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md)
