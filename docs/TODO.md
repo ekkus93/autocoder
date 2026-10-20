@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** v0 locally verified; owner deferred unavailable two-server acceptance
+**Status:** v0 and terminal UI locally verified; CI tools prepared, live CI awaits runner/publication
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite passes 67 tests.
+controlled dependency preparation are implemented. The full suite now passes 77 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -19,7 +19,15 @@ Only one Ollama endpoint is available, as confirmed by the owner. Shared-endpoin
 concurrency is verified. The owner explicitly requested skipping the two-server
 test on 2026-10-19. SPEC 1.1 defers independent-server/offline-server acceptance,
 which remains untested. P6-07/P7-05 close under this revised scope; P7-02/P7-04
-retain their untested portions as deferred. Post-v0 work has not started. See the
+retain their untested portions as deferred.
+
+P8-01's native terminal client is verified, P8-03's source/privacy evaluation is
+recorded, and P8-07's workload review retains JSONL. P8-04's CI wrapper and the
+owner-requested lint/test workflow are prepared locally. GitHub has no registered
+repository runners or published workflows: live qualification needs runner
+provisioning and publication, followed by approval of a concrete dispatch plan.
+P8-02/P8-05/P8-06 remain conditional and untested, as detailed in the
+[P8 checkpoint](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md). See the
 [v0 evidence and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md)
 and [task command guide](V0.md). Original Stage 0 scores/registrations are unchanged.
 
@@ -223,13 +231,23 @@ local scope verified, reviewed 2026-10-19; remote CI/hardware/human patch accept
 
 ## P8 — After v0: terminal experience and optional integrations (not gate for v0)
 
-- [ ] **P8-01** Build a native TUI as a client of the existing event stream: task prompt, phase/tool status, diff/evidence, approve/reject, stop, and resume.
+- [x] **P8-01** Build a native TUI as a client of the existing event stream: task prompt, phase/tool status, diff/evidence, approve/reject, stop, and resume.
+  Evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | `uv run pytest -q` (77 passed; six terminal tests, including real PTY) | local pass; display limits and no manual usability acceptance documented | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md) | reviewed 2026-10-20T00:01:33Z
 - [ ] **P8-02** Add Grounded Docs (local/self-hosted documentation MCP) against one controlled corpus; benchmark retrieval benefit and token cost before expanding sources.
-- [ ] **P8-03** Evaluate SearXNG and Fetch MCP for optional public search with explicit privacy/network policy; no paid API dependency.
+- [x] **P8-03** Evaluate SearXNG and Fetch MCP for optional public search with explicit privacy/network policy; no paid API dependency.
+  Evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | pinned upstream source/configuration review | evaluation complete; retain offline core, services/adapters not installed or runtime-qualified | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md) | reviewed 2026-10-20T00:01:33Z
 - [ ] **P8-04** Add `gh` wrapper for approved GitHub Actions dispatch and exact-commit CI inspection, with retries, output bounds and no uncontrolled remote mutation.
+  Partial evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | four CI tests and local workflow commands pass | wrapper and requested workflow prepared; live CI awaits qualified runner, publication, concrete dispatch approval | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md).
 - [ ] **P8-05** Evaluate separate Research/Architect/Developer/Reviewer agents **only** against the same single-loop baseline and equal budgets; keep the simpler loop unless task success measurably improves.
 - [ ] **P8-06** Evaluate multi-model role routing, alternate quantizations, Kotlin/Android testing and richer memory or dashboard only when driven by task evidence.
-- [ ] **P8-07** Consider SQLite migration only if JSONL query/transaction/concurrency requirements demonstrate a need; preserve replay compatibility.
+- [x] **P8-07** Consider SQLite migration only if JSONL query/transaction/concurrency requirements demonstrate a need; preserve replay compatibility.
+  Evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | `scripts/audit_journal_workload.py --journal ... --output ...` | four journals, 68–79 events, median replay 1.51–2.18 ms; retain JSONL, no scale claim | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md) | reviewed 2026-10-20T00:01:33Z
+
+P8-02 requires a real docs-retrieval gap (SPEC §5.3); none has been demonstrated.
+P8-05 has no role-ablation result, and P8-06 remains task-evidence conditional.
+These unchecked items are pending experiments, not completed integrations.
+P8-04 now needs owner assistance to provide a qualified runner and publish the
+reviewed workflow before a concrete dispatch can be approved.
 
 ## Completion record template
 

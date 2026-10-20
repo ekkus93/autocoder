@@ -67,7 +67,9 @@ actually checked out or tested. Review the selected workflow before use.
 Local tests cover approval, ambiguous dispatches, moving refs, mismatched runs,
 output bounds, literal JSON inputs, and read-only retries. No live dispatch or CI
 pass has been claimed. The repository had no Actions workflows during inspection;
-a target workflow and an approved plan are needed for live qualification.
+no repository runners were registered either. The owner selected preparing the
+workflow here. A qualified runner, publication and an approved plan are needed
+for live qualification.
 
 A local draft, [`.github/workflows/verify.yml`](../.github/workflows/verify.yml),
 provides manual dispatch only, a sandbox probe, locked `uv` setup, lint, formatting,
