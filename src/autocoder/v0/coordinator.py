@@ -50,8 +50,12 @@ class Coordinator:
                 # Re-read the range, not the old body/hash. Edits may also shorten the file.
                 last = max(1, frame["total_lines"])
                 current = self.gateway.read(name, min(start, last), min(end, last))
-                current["truncated"] |= len(current["source"]) > limit
-                current["source"] = current["source"][:limit]
+                example = frame.get("test_setup_example")
+                if example:
+                    current["test_setup_example"] = example
+                source_limit = limit - len((example or {}).get("source", ""))
+                current["truncated"] |= len(current["source"]) > source_limit
+                current["source"] = current["source"][:source_limit]
                 current["end"] = current["start"] + max(1, len(current["source"].splitlines())) - 1
                 evidence["files"][name] = current
         self.workspace.assert_expected()
@@ -248,6 +252,7 @@ class Coordinator:
         instruction = (
             task + "\nUse apply_edit with exact text and current hash. "
             "Retrieve source if needed. Fix every declared file. "
+            "Adapt existing test setup excerpts rather than inventing fixture APIs. "
             "When ready for verification, reply without tools."
         )
         messages = self.builder.build(
@@ -258,7 +263,6 @@ class Coordinator:
             failure,
         )
         completed = []
-        recent_source = {}
         mutated = False
         for _ in range(self.project.phase_tool_calls + 1):
             self.workspace.assert_expected()
@@ -270,14 +274,6 @@ class Coordinator:
             ):
                 evidence = self.implementation_evidence(plan.paths, task)
                 expected = self.workspace.expected()
-                for path, frame in recent_source.items():
-                    current = evidence["files"].get(path)
-                    if (
-                        current
-                        and not current.get("focused_symbol")
-                        and frame["sha256"] == expected[path]
-                    ):
-                        evidence["files"][path] = frame
                 initial = next(
                     row["observed_hashes"]
                     for row in self.journal.read()
@@ -360,6 +356,7 @@ class Coordinator:
             if not calls:
                 return
             messages.append(dict(message, role="assistant"))
+            test_edited = False
             for call in calls:
                 function = call.get("function", {})
                 try:
@@ -380,9 +377,10 @@ class Coordinator:
                     self.remember_source(observation)
                     if observation.get("changed"):
                         mutated = True
-                        recent_source.pop(observation["path"], None)
-                    elif "path" in observation and "source" in observation:
-                        recent_source[observation["path"]] = observation
+                        path = observation["path"]
+                        test_edited |= path in self.project.approved_test_paths and path.endswith(
+                            ".py"
+                        )
                 completed.append(
                     {
                         "tool": function.get("name"),
@@ -396,6 +394,11 @@ class Coordinator:
                         else None,
                     }
                 )
+            if test_edited:
+                self.journal.emit(
+                    "EARLY_TEST_VERIFICATION", data={"action": "run configured checks"}
+                )
+                return
         raise BudgetExhausted("implementation step cap")
 
     def reproduction(self, baseline):
@@ -472,6 +475,7 @@ class Coordinator:
             self.transition(Phase.IMPLEMENT)
             await self.implement(request, plan, diagnostic(baseline))
             public_failures = 0
+            previous_diagnostic = None
             while True:
                 self.transition(Phase.VERIFY)
                 checks = self.checks.all("candidate")
@@ -494,8 +498,11 @@ class Coordinator:
                     break
                 self.budget.consume(repairs=1)
                 public_failures += 1
+                current_diagnostic = diagnostic(checks)
+                stalled = current_diagnostic == previous_diagnostic
+                previous_diagnostic = current_diagnostic
                 replans = [r for r in self.journal.read() if r["kind"] in {"RESUME", "REPLAN"}]
-                if public_failures == 2 and not replans:
+                if public_failures >= 2 and stalled and not replans:
                     self.journal.emit("REPLAN", data={"count": 1})
                     self.transition(Phase.ORIENT)
                     revised_request = (

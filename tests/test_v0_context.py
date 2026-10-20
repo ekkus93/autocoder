@@ -725,3 +725,173 @@ def test_focused_method_context_includes_bounded_constructor_and_setup_without_i
         refreshed = controller.gateway.evidence(["helper.py"], request="Fix Client.consume")
         assert "source.py" not in refreshed["files"]
         assert "class_interface" not in refreshed["files"]["helper.py"]
+
+
+def test_setup_examples_use_approved_baseline_and_survive_refreshed_source(tmp_path):
+    from autocoder.tool_schema import Edit
+
+    test_source = (
+        "\n\ndef helper(repository, temporary):\n    pass\n"
+        + "# padding\n" * 150
+        + """
+def test_existing(tmp_path):
+    with Fixture({"source.py": "VALUE = 1"}) as fixture:
+        controller = helper(fixture.repository, tmp_path)
+        assert controller
+"""
+    )
+    with Fixture({"source.py": "VALUE = 1\n", "tests/test_sample.py": test_source}) as fixture:
+        project = Project(
+            repository=fixture.repository,
+            state_dir=tmp_path / "state",
+            readable_paths=["source.py", "tests/test_sample.py"],
+            editable_paths=["tests/test_sample.py"],
+            approved_test_paths=["tests/test_sample.py"],
+            checks=[Check(name="unit", command=["/usr/bin/true"])],
+        )
+        journal = journal_for(project, "d" * 32, create=True)
+        controller = Coordinator(project, journal)
+        controller.workspace.create()
+        controller.gateway = ToolGateway(controller.workspace, controller.budget, None)
+        evidence = controller.implementation_evidence(["tests/test_sample.py"], "Add a test")
+        frame = evidence["files"]["tests/test_sample.py"]
+        example = frame["test_setup_example"]
+        assert "helper(fixture.repository, tmp_path)" in example["source"]
+        assert example["base_sha"] == controller.workspace.base_sha
+        assert len(frame["source"]) + len(example["source"]) <= 3000
+        assert example["start"] > 120
+        controller.workspace.edit(
+            Edit(
+                path="tests/test_sample.py",
+                old="        assert controller",
+                new=(
+                    "        assert controller\n\ndef test_bad(tmp_path):\n"
+                    "    with Fixture({}) as wrong:\n        helper(tmp_path, tmp_path)\n"
+                ),
+                expected_sha256=frame["sha256"],
+            )
+        )
+        controller.source_ranges["tests/test_sample.py"] = (1, 10)
+        controller.gateway = ToolGateway(controller.workspace, controller.budget, None)
+        refreshed = controller.implementation_evidence(["tests/test_sample.py"], "Add a test")
+        assert refreshed["files"]["tests/test_sample.py"]["test_setup_example"] == example
+        assert "wrong" not in example["source"]
+        assert list(controller.implementation_evidence(["source.py"], "Fix source")["files"]) == [
+            "source.py"
+        ]
+
+
+def test_test_edit_returns_to_verification_before_another_inference(tmp_path):
+    from autocoder.protocol import digest
+    from autocoder.v0.schema import Plan
+
+    with Fixture(
+        {"source.py": "VALUE = 1\n", "tests/test_sample.py": "# new test here\n"}
+    ) as fixture:
+        project = Project(
+            repository=fixture.repository,
+            state_dir=tmp_path / "state",
+            readable_paths=["source.py", "tests/test_sample.py"],
+            editable_paths=["tests/test_sample.py"],
+            approved_test_paths=["tests/test_sample.py"],
+            checks=[Check(name="unit", command=["/usr/bin/true"])],
+        )
+        journal = journal_for(project, "e" * 32, create=True)
+        calls = 0
+
+        async def transport(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            assert calls == 1, "Tests must be checked before another inference"
+            return answer(
+                {
+                    "tool_calls": [
+                        {
+                            "function": {
+                                "name": "apply_edit",
+                                "arguments": {
+                                    "path": "tests/test_sample.py",
+                                    "old": "# new test here",
+                                    "new": "def test_new():\n    assert True",
+                                    "expected_sha256": digest(b"# new test here\n"),
+                                },
+                            }
+                        }
+                    ]
+                }
+            )
+
+        controller = Coordinator(project, journal, transport=transport)
+        controller.workspace.create()
+        controller.gateway = ToolGateway(controller.workspace, controller.budget, None)
+        controller.phase = Phase.IMPLEMENT
+        plan = Plan(
+            base_sha=controller.workspace.base_sha,
+            paths=["tests/test_sample.py"],
+            steps=["Add test"],
+            checks=["unit"],
+        )
+        asyncio.run(controller.implement("Add regression", plan, "old failure"))
+        assert calls == 1
+        assert any(r["kind"] == "EARLY_TEST_VERIFICATION" for r in journal.read())
+
+
+def test_changed_public_failure_gets_focused_repair_before_replan(tmp_path):
+    from test_v0 import FIXED, SOURCE, fake_model, project_for
+
+    from autocoder.v0.cli import start
+
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        check = project.checks[0].model_copy(
+            update={
+                "command": [
+                    "/usr/bin/python3",
+                    "-I",
+                    "-c",
+                    'import sys; sys.path.insert(0,"/work"); from greeting import greet; '
+                    'value=greet("Ada"); '
+                    'assert value=="Hello, Ada!", "greeting regression: "+value',
+                ]
+            }
+        )
+        project = project.model_copy(update={"checks": [check]})
+        base = fake_model([])
+        attempts = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal attempts
+            body = json.loads(messages[1]["content"])
+            if body["phase"] in {"IMPLEMENT", "REPAIR"}:
+                if any(m["role"] == "tool" for m in messages):
+                    return answer({"content": "verify"})
+                attempts += 1
+                frame = body["evidence"]["files"]["greeting.py"]
+                new = (
+                    FIXED if attempts == 3 else f'def greet(name):\n    return "wrong {attempts}"\n'
+                )
+                return answer(
+                    {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "apply_edit",
+                                    "arguments": {
+                                        "path": "greeting.py",
+                                        "old": frame["source"],
+                                        "new": new.rstrip("\n"),
+                                        "expected_sha256": frame["sha256"],
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                )
+            assert attempts == 0, "Changed diagnostics should not restart orientation"
+            return await base(endpoint, model, messages, budget, **options)
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "VERIFIED_LOCAL", result
+        assert result["usage"]["repairs"] == 2
+        journal = journal_for(project, result["task_id"])
+        assert not any(r["kind"] == "REPLAN" for r in journal.read())

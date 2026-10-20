@@ -11,7 +11,7 @@ from autocoder.protocol import digest
 from autocoder.tool_schema import MODELS, inventory
 from autocoder.v0.journal import NeedsUser
 from autocoder.v0.schema import Phase, relative
-from autocoder.v0.workspace import safe_file
+from autocoder.v0.workspace import git, safe_file
 
 READ_TOOLS = {"search_text", "read_file_range", "read_symbol", "find_references"}
 WRITE_PHASES = {Phase.IMPLEMENT, Phase.REPAIR}
@@ -31,6 +31,7 @@ class ToolGateway:
         self.calls = 0
         self.fingerprints = {}
         self.reads = {}
+        self.example_cache = {}
 
     def enter(self, phase, paths=()):
         self.phase, self.planned_paths = phase, set(paths)
@@ -126,13 +127,20 @@ class ToolGateway:
         # Register only snippets actually sent, not earlier internal full-file prefixes.
         self.reads = {name: [] for name in files}
         for entry in files.values():
+            example = self.test_setup_example(entry["path"])
+            if example:
+                entry["test_setup_example"] = dict(example)
+                cap = min(1000, limit // 3)
+                entry["test_setup_example"]["truncated"] |= len(example["source"]) > cap
+                entry["test_setup_example"]["source"] = example["source"][:cap]
             if "class_interface" in entry:
                 interface = entry["class_interface"]
                 interface_limit = min(1200, limit // 3)
                 interface["truncated"] |= len(interface["source"]) > interface_limit
                 interface["source"] = interface["source"][:interface_limit]
             interface_size = len(entry.get("class_interface", {}).get("source", ""))
-            source_limit = limit - interface_size
+            example_size = len(entry.get("test_setup_example", {}).get("source", ""))
+            source_limit = limit - interface_size - example_size
             entry["truncated"] |= len(entry["source"]) > source_limit
             entry["source"] = entry["source"][:source_limit]
             entry["end"] = entry["start"] + max(1, len(entry["source"].splitlines())) - 1
@@ -143,6 +151,62 @@ class ToolGateway:
             "files": files,
             "available_paths": self.project.readable_paths,
         }
+
+    def test_setup_example(self, name):
+        """Baseline test excerpts are usage examples, not verified standalone programs."""
+        if not self.project.can_read(name) or not name.endswith(".py"):
+            return None
+        path = Path(name)
+        if not (path.name.startswith("test_") or "tests" in path.parts):
+            return None
+        if name in self.example_cache:
+            return self.example_cache[name]
+        self.example_cache[name] = None
+        try:
+            source = git(self.workspace.root, "show", f"{self.workspace.base_sha}:{name}")
+            tree = ast.parse(source)
+        except (subprocess.CalledProcessError, SyntaxError):
+            return None
+        helpers = {
+            n.name
+            for n in tree.body
+            if isinstance(n, ast.FunctionDef) and not n.name.startswith("test_")
+        }
+        candidates = []
+        lines = source.splitlines()
+        for test in tree.body:
+            if not isinstance(test, ast.FunctionDef) or not test.name.startswith("test_"):
+                continue
+            for setup in ast.walk(test):
+                if not isinstance(setup, ast.With):
+                    continue
+                for statement in setup.body:
+                    if not isinstance(statement, (ast.Assign, ast.Expr)):
+                        continue
+                    if (
+                        any(
+                            isinstance(call, ast.Call)
+                            and isinstance(call.func, ast.Name)
+                            and call.func.id in helpers
+                            for call in ast.walk(statement)
+                        )
+                        and statement.end_lineno - setup.lineno < 16
+                    ):
+                        text = "\n".join(lines[setup.lineno - 1 : statement.end_lineno])
+                        candidates.append(
+                            (len(text), setup.lineno, statement.end_lineno, test.name, text)
+                        )
+        if candidates:
+            _, start, end, test, text = min(candidates)
+            self.example_cache[name] = {
+                "base_sha": self.workspace.base_sha,
+                "test": test,
+                "start": start,
+                "end": end,
+                "source": text[:1000],
+                "truncated": len(text) > 1000,
+            }
+        return self.example_cache[name]
 
     @staticmethod
     def class_interface(owner, data):
