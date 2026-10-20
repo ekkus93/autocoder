@@ -1,7 +1,7 @@
 # Local AI Coder — Implementation TODO
 
 **Status:** v0 and terminal UI verified; hosted push/PR CI passes with release-only artifacts
-**Date:** 2026-10-20  
+**Date:** 2026-10-20
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
 
