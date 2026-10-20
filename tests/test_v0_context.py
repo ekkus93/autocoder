@@ -328,3 +328,67 @@ def test_repeated_implementation_read_verifies_then_uses_bounded_repair(tmp_path
         ]
         assert checks == ["fail", "pass"]
         assert any(row["kind"] == "REPETITION_STOP" for row in journal.read())
+
+
+def test_compaction_preserves_edit_progress_and_dates_the_old_diagnostic(tmp_path):
+    from autocoder.protocol import digest
+    from autocoder.v0.schema import Plan
+
+    source = "VALUE = 1\n" + "".join("# padding " + "x" * 80 + "\n" for _ in range(150))
+    with Fixture({"source.py": source, "helper.py": source}) as fixture:
+        calls = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal calls
+            calls += 1
+            body = json.loads(messages[1]["content"])
+            if calls == 1:
+                rendered = len(
+                    json.dumps(
+                        {"messages": messages, "tools": options["tools"], "schema": None}
+                    ).encode()
+                )
+                remaining = rendered - 1000
+                budget.consume(request_tokens=budget.limits.request_tokens - remaining)
+                return answer(
+                    {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "apply_edit",
+                                    "arguments": {
+                                        "path": "source.py",
+                                        "old": "VALUE = 1",
+                                        "new": "VALUE = 2",
+                                        "expected_sha256": digest(source.encode()),
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                )
+            assert calls == 2
+            evidence = body["evidence"]
+            assert evidence["changed_paths"] == ["source.py"]
+            assert evidence["unchanged_planned_paths"] == ["helper.py"]
+            assert evidence["historical_diagnostic_before_edits"] == "previous failing check"
+            assert "diagnostic" not in body
+            assert "source_omitted" in evidence["files"]["source.py"]
+            assert evidence["files"]["helper.py"]["source"]
+            assert evidence["completed_operation_summaries"][0]["path"] == "source.py"
+            return answer({"content": "Proceed to deterministic verification"})
+
+        controller = coordinator_for(fixture.repository, tmp_path, transport, edit_helper=True)
+        controller.transition(Phase.REPRODUCE_AND_PLAN)
+        controller.transition(Phase.IMPLEMENT)
+        plan = Plan(
+            base_sha=controller.workspace.base_sha,
+            paths=["source.py", "helper.py"],
+            steps=["Update the files"],
+            checks=["unit"],
+        )
+        asyncio.run(
+            controller.implement("Update source and companion", plan, "previous failing check")
+        )
+        assert calls == 2
+        assert (controller.workspace.root / "source.py").read_text().startswith("VALUE = 2")

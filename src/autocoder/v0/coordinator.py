@@ -253,16 +253,57 @@ class Coordinator:
                         and frame["sha256"] == expected[path]
                     ):
                         evidence["files"][path] = frame
+                initial = next(
+                    row["observed_hashes"]
+                    for row in self.journal.read()
+                    if row["kind"] == "WORKTREE_OUTCOME"
+                )
+                changed = [path for path in plan.paths if expected[path] != initial[path]]
+                evidence["changed_paths"] = changed
+                evidence["unchanged_planned_paths"] = [
+                    path for path in plan.paths if path not in changed
+                ]
                 evidence["completed_operation_summaries"] = completed[-4:]
+                if mutated and failure:
+                    evidence["historical_diagnostic_before_edits"] = failure[:4096]
+                compact_instruction = (
+                    instruction
+                    + "\nHistory compacted. Changed paths report applied filesystem edits. "
+                    + (
+                        "Prior diagnostics predate edits in this phase. "
+                        if mutated
+                        else "The attached diagnostic is the latest verification failure. "
+                    )
+                    + "Focus on remaining work without repeating unchanged reads."
+                )
                 messages = self.builder.build(
                     self.phase,
-                    instruction
-                    + "\nHistory compacted. Completed edits are present in current source. "
-                    "Continue remaining work without repeating unchanged reads.",
+                    compact_instruction,
                     evidence,
                     plan.model_dump(),
-                    failure,
+                    None if mutated else failure,
                 )
+                if not self.model.fits_request_budget(
+                    messages, tools=self.gateway.tools(), output=1536
+                ):
+                    # Keep changed-file identity while making room for unfinished companion work.
+                    # These files remain readable through the bounded gateway if needed again.
+                    for path in changed:
+                        evidence["files"][path] = {
+                            key: value
+                            for key, value in evidence["files"][path].items()
+                            if key != "source"
+                        }
+                        evidence["files"][path]["source_omitted"] = (
+                            "already changed; read if needed"
+                        )
+                    messages = self.builder.build(
+                        self.phase,
+                        compact_instruction,
+                        evidence,
+                        plan.model_dump(),
+                        None if mutated else failure,
+                    )
                 self.journal.emit(
                     "CONTEXT_RESET", data={"reason": "context or remaining request allowance"}
                 )
@@ -308,6 +349,10 @@ class Coordinator:
                 completed.append(
                     {
                         "tool": function.get("name"),
+                        "path": observation.get("path") if isinstance(observation, dict) else None,
+                        "changed": bool(observation.get("changed"))
+                        if isinstance(observation, dict)
+                        else False,
                         "result_sha256": digest(json.dumps(observation, sort_keys=True).encode()),
                         "error": observation.get("error")
                         if isinstance(observation, dict)
