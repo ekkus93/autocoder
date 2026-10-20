@@ -11,7 +11,7 @@ from autocoder.protocol import digest
 from autocoder.provenance import inventory, request_json
 from autocoder.v0.gateway import RepeatedObservation, ToolGateway
 from autocoder.v0.journal import NeedsUser
-from autocoder.v0.model import ContextBuilder, ModelBackend, TaskBudget
+from autocoder.v0.model import ContextBuilder, IncompleteResponse, ModelBackend, TaskBudget
 from autocoder.v0.navigation import Navigation
 from autocoder.v0.schema import TRANSITIONS, Orientation, Outcome, Phase, Plan
 from autocoder.v0.verification import VerificationRunner, diagnostic, passed
@@ -319,7 +319,18 @@ class Coordinator:
                     )
                     return
                 raise BudgetExhausted("request_tokens")
-            message = await self.model.request(messages, tools=self.gateway.tools(), output=1536)
+            try:
+                message = await self.model.request(
+                    messages, tools=self.gateway.tools(), output=1536
+                )
+            except IncompleteResponse:
+                # The backend rejects the whole response before any calls can be dispatched.
+                # Verify the filesystem as it stands, then use the normal bounded repair loop.
+                self.journal.emit(
+                    "INCOMPLETE_RESPONSE",
+                    data={"action": "discard response and verify candidate"},
+                )
+                return
             calls = message.get("tool_calls") or []
             if not calls:
                 return

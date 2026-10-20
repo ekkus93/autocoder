@@ -14,6 +14,10 @@ from autocoder.protocol import digest
 from autocoder.v0.journal import private_directory
 
 
+class IncompleteResponse(BudgetExhausted):
+    """No calls from this response may execute; existing edits can still be checked."""
+
+
 class TaskBudget(Budget):
     def __init__(self, limits, journal):
         self.journal = journal
@@ -153,7 +157,7 @@ class ModelBackend:
                 },
             )
             if result["truncated"] or not result["finished"]:
-                raise BudgetExhausted("Model response incomplete or output allowance exhausted")
+                raise IncompleteResponse("Model response incomplete or output allowance exhausted")
             return result["message"]
         finally:
             try:

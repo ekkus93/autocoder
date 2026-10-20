@@ -392,3 +392,128 @@ def test_compaction_preserves_edit_progress_and_dates_the_old_diagnostic(tmp_pat
         )
         assert calls == 2
         assert (controller.workspace.root / "source.py").read_text().startswith("VALUE = 2")
+
+
+@pytest.mark.parametrize("correct_patch", [True, False])
+@pytest.mark.parametrize("unfinished", [True, False])
+def test_incomplete_response_discards_calls_and_verifies_prior_edits(
+    tmp_path, correct_patch, unfinished
+):
+    from test_v0 import FIXED, SOURCE, fake_model, project_for
+
+    from autocoder.protocol import digest
+    from autocoder.v0.cli import start
+
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        base = fake_model([])
+        implementation_calls = 0
+        repair_calls = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal implementation_calls, repair_calls
+            body = json.loads(messages[1]["content"])
+            phase = body["phase"]
+            if phase == "REPAIR":
+                repair_calls += 1
+                assert len(messages) == (2 if repair_calls == 1 else 4)
+                assert "greeting regression" in body["diagnostic"]
+                assert "TRUNCATED RESPONSE" not in json.dumps(messages)
+                current = body["evidence"]["files"]["greeting.py"]
+                if repair_calls == 1:
+                    return answer(
+                        {
+                            "tool_calls": [
+                                {
+                                    "function": {
+                                        "name": "apply_edit",
+                                        "arguments": {
+                                            "path": "greeting.py",
+                                            "old": current["source"],
+                                            "new": FIXED.rstrip("\n"),
+                                            "expected_sha256": current["sha256"],
+                                        },
+                                    }
+                                }
+                            ]
+                        }
+                    )
+                return answer({"content": "Ready"})
+            result = await base(endpoint, model, messages, budget, **options)
+            if phase == "IMPLEMENT":
+                implementation_calls += 1
+                if implementation_calls == 1 and not correct_patch:
+                    result["message"]["tool_calls"][0]["function"]["arguments"]["new"] = (
+                        SOURCE.replace("Hello!", "Still broken")
+                    )
+                if implementation_calls == 2:
+                    # Even a syntactically complete call in an incomplete response is discarded.
+                    current = FIXED if correct_patch else SOURCE.replace("Hello!", "Still broken")
+                    result["message"] = {
+                        "content": "TRUNCATED RESPONSE",
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "apply_edit",
+                                    "arguments": {
+                                        "path": "greeting.py",
+                                        "old": current,
+                                        "new": "raise RuntimeError\n",
+                                        "expected_sha256": digest(current.encode()),
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                    result["finished"] = not unfinished
+                    result["truncated"] = not unfinished
+            return result
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "VERIFIED_LOCAL", result
+        assert implementation_calls == 2
+        assert result["usage"]["repairs"] == (0 if correct_patch else 1)
+        assert (fixture.repository / "greeting.py").read_text() == SOURCE
+        assert (Path(result["worktree"]) / "greeting.py").read_text() == FIXED
+        journal = journal_for(project, result["task_id"])
+        assert len([row for row in journal.read() if row["kind"] == "EDIT_OUTCOME"]) == (
+            1 if correct_patch else 2
+        )
+        checks = [
+            row["status"]
+            for row in journal.read()
+            if row["kind"] == "CHECK" and row["data"]["label"] == "candidate"
+        ]
+        assert checks == (["pass"] if correct_patch else ["fail", "pass"])
+        assert any(row["kind"] == "INCOMPLETE_RESPONSE" for row in journal.read())
+
+
+def test_repeated_incomplete_responses_without_edits_exhaust_repair_budget(tmp_path):
+    from test_v0 import SOURCE, fake_model, project_for
+
+    from autocoder.v0.cli import start
+
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        project = project.model_copy(
+            update={"limits": project.limits.model_copy(update={"repairs": 1})}
+        )
+        base = fake_model([])
+
+        async def transport(endpoint, model, messages, budget, **options):
+            phase = json.loads(messages[1]["content"])["phase"]
+            if phase in {"IMPLEMENT", "REPAIR"}:
+                budget.consume(request_tokens=10, output_tokens=10)
+                result = answer({"content": "unfinished"})
+                result["truncated"] = True
+                return result
+            return await base(endpoint, model, messages, budget, **options)
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "BUDGET_EXHAUSTED", result
+        assert result["detail"] == "repairs"
+        assert result["acceptance"]["tests"] == "fail"
+        assert result["usage"]["repairs"] == 1
+        assert result["changed_files"] == []
+        journal = journal_for(project, result["task_id"])
+        assert len([row for row in journal.read() if row["kind"] == "INCOMPLETE_RESPONSE"]) == 2
