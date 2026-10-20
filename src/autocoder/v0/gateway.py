@@ -51,7 +51,7 @@ class ToolGateway:
             raise ValueError("Path is not approved for source reading")
         _, data = safe_file(self.workspace.root, name)
         lines = data.decode("utf-8").splitlines()
-        if start < 1 or end < start or end - start >= 120 or (start > len(lines) and lines):
+        if start < 1 or end < start or end - start >= 120 or start > max(1, len(lines)):
             raise ValueError("Read range must be at most 120 existing source lines")
         excerpt = "\n".join(lines[start - 1 : end])
         result = {

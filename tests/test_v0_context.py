@@ -11,6 +11,37 @@ from autocoder.v0.gateway import ToolGateway
 from autocoder.v0.schema import Check, Orientation, Phase, Project
 
 
+def test_empty_file_read_range(tmp_path):
+    from autocoder.protocol import digest
+
+    normal = "VALUE = 1\nVALUE = 2\n"
+    with Fixture({"source.py": "", "helper.py": normal}) as fixture:
+        controller = coordinator_for(fixture.repository, tmp_path, None)
+        gateway = controller.gateway
+        for end in (1, 2, 120):
+            result = gateway.read("source.py", start=1, end=end)
+            assert result["start"] == result["end"] == 1
+            assert result["total_lines"] == 0
+            assert result["source"] == ""
+            assert result["sha256"] == digest(b"")
+            assert result["base_sha"] == controller.workspace.base_sha
+            assert not result["truncated"]
+
+        for start, end in ((2, 2), (100, 100), (0, 1), (1, 121), (2, 1)):
+            with pytest.raises(ValueError, match="Read range must be at most 120"):
+                gateway.read("source.py", start=start, end=end)
+
+        result = gateway.read("helper.py", start=1, end=120)
+        assert result["source"] == normal.rstrip("\n")
+        assert result["start"] == 1 and result["end"] == result["total_lines"] == 2
+        assert result["sha256"] == digest(normal.encode())
+        assert gateway.read("helper.py", start=2, end=2)["source"] == "VALUE = 2"
+        with pytest.raises(ValueError, match="Read range must be at most 120"):
+            gateway.read("helper.py", start=3, end=3)
+        with pytest.raises(ValueError, match="Path is not approved"):
+            gateway.read("unapproved.py")
+
+
 def coordinator_for(repository, temporary, transport, *, edit_helper=False):
     project = Project(
         repository=repository,
