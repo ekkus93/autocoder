@@ -76,6 +76,11 @@ class ModelBackend:
         rendered, allowance = self.allocation(messages, schema=schema, tools=tools, output=output)
         return rendered + allowance + 1024 <= self.project.context * 0.8
 
+    def fits_request_budget(self, messages, *, schema=None, tools=None, output=1024):
+        rendered, _ = self.allocation(messages, schema=schema, tools=tools, output=output)
+        remaining = self.project.limits.request_tokens - self.budget.snapshot().request_tokens
+        return rendered + 1024 <= remaining
+
     async def request(self, messages, *, schema=None, tools=None, output=1024):
         messages = json.loads(json.dumps(messages))
         rendered, allowance = self.allocation(messages, schema=schema, tools=tools, output=output)

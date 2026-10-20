@@ -80,7 +80,11 @@ class Coordinator:
                 evidence,
             )
             for _ in range(4):
-                if not self.model.fits_context(messages, tools=self.gateway.tools(), output=768):
+                if not self.model.fits_context(
+                    messages, tools=self.gateway.tools(), output=768
+                ) or not self.model.fits_request_budget(
+                    messages, tools=self.gateway.tools(), output=768
+                ):
                     self.journal.emit(
                         "CONTEXT_RESET",
                         data={
@@ -219,18 +223,51 @@ class Coordinator:
             failure,
         )
         completed = []
+        recent_source = {}
+        mutated = False
         for _ in range(self.project.phase_tool_calls + 1):
             self.workspace.assert_expected()
             rendered = len(
                 json.dumps({"messages": messages, "tools": self.gateway.tools()}).encode()
             )
-            if rendered + 2560 > self.project.context * 0.75:
+            if rendered + 2560 > self.project.context * 0.75 or not self.model.fits_request_budget(
+                messages, tools=self.gateway.tools(), output=1536
+            ):
                 evidence = self.gateway.evidence(plan.paths, request=task)
+                expected = self.workspace.expected()
+                for path, frame in recent_source.items():
+                    current = evidence["files"].get(path)
+                    if (
+                        current
+                        and not current.get("focused_symbol")
+                        and frame["sha256"] == expected[path]
+                    ):
+                        evidence["files"][path] = frame
                 evidence["completed_operation_summaries"] = completed[-4:]
                 messages = self.builder.build(
-                    self.phase, instruction, evidence, plan.model_dump(), failure
+                    self.phase,
+                    instruction
+                    + "\nHistory compacted. Completed edits are present in current source. "
+                    "Continue remaining work without repeating unchanged reads.",
+                    evidence,
+                    plan.model_dump(),
+                    failure,
                 )
-                self.journal.emit("CONTEXT_RESET", data={"reason": "75 percent context threshold"})
+                self.journal.emit(
+                    "CONTEXT_RESET", data={"reason": "context or remaining request allowance"}
+                )
+            if not self.model.fits_request_budget(
+                messages, tools=self.gateway.tools(), output=1536
+            ):
+                if mutated:
+                    self.journal.emit(
+                        "VERIFY_WITHOUT_INFERENCE",
+                        data={
+                            "reason": "candidate edited; no affordable next inference reservation"
+                        },
+                    )
+                    return
+                raise BudgetExhausted("request_tokens")
             message = await self.model.request(messages, tools=self.gateway.tools(), output=1536)
             calls = message.get("tool_calls") or []
             if not calls:
@@ -246,6 +283,12 @@ class Coordinator:
                         "content": json.dumps(observation),
                     }
                 )
+                if isinstance(observation, dict):
+                    if observation.get("changed"):
+                        mutated = True
+                        recent_source.pop(observation["path"], None)
+                    elif "path" in observation and "source" in observation:
+                        recent_source[observation["path"]] = observation
                 completed.append(
                     {
                         "tool": function.get("name"),

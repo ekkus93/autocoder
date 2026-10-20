@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 
@@ -197,3 +198,43 @@ def test_plan_companion_paths_require_actual_prior_source_observation(tmp_path, 
         else:
             with pytest.raises(ValueError, match="Invalid phase artifact"):
                 asyncio.run(controller.plan("Fix source with companion tests", findings, []))
+
+
+@pytest.mark.parametrize("correct_patch", [True, False])
+def test_edited_candidate_is_verified_when_another_inference_cannot_be_reserved(
+    tmp_path, correct_patch
+):
+    from test_v0 import FIXED, SOURCE, fake_model, project_for
+
+    from autocoder.v0.cli import start
+
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        base = fake_model([])
+        implementations = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal implementations
+            result = await base(endpoint, model, messages, budget, **options)
+            if json.loads(messages[1]["content"])["phase"] == "IMPLEMENT":
+                implementations += 1
+                assert implementations == 1
+                if not correct_patch:
+                    args = result["message"]["tool_calls"][0]["function"]["arguments"]
+                    args["new"] = 'def greet(name):\n    return "Still broken"\n'
+                remaining = project.limits.request_tokens - budget.snapshot().request_tokens
+                budget.consume(request_tokens=remaining - 100)
+            return result
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == ("VERIFIED_LOCAL" if correct_patch else "BUDGET_EXHAUSTED"), (
+            result
+        )
+        assert result["acceptance"]["tests"] == ("pass" if correct_patch else "fail")
+        assert implementations == 1
+        assert result["usage"]["request_tokens"] <= project.limits.request_tokens
+        assert (fixture.repository / "greeting.py").read_text() == SOURCE
+        journal = journal_for(project, result["task_id"])
+        assert any(row["kind"] == "VERIFY_WITHOUT_INFERENCE" for row in journal.read())
+        if correct_patch:
+            assert (Path(result["worktree"]) / "greeting.py").read_text() == FIXED
