@@ -80,3 +80,66 @@ uv run autocoder-task --config \
   ~/.local/share/autocoder/trials/tui-prompt-utf8-qwen128k-v1/project.json \
   status 9fea8f7caacb4ad9bea39059c0d6e699
 ```
+
+## Repair-efficiency follow-up
+
+Owner-authorized revision `da3517e` addresses two observed inefficiencies:
+
+- Public diagnostics now identify every failing check within the same 4,096-character
+  allowance. Space is reserved for each check header and divided between output
+  excerpts, so a verbose first failure cannot hide lint, format or integrity failures.
+  Only public verification records enter repair; held-out results remain terminal.
+- During a running task, bounded source-range hints survive phase resets. Repair
+  prompts re-read current source and hashes only for planned files, preserve explicit
+  method focus, and clamp ranges after file shortening. Source body limits remain
+  unchanged; prior assistant/tool transcripts are not inherited. Restart recovery
+  still follows the normal bounded replan rather than restoring transient hints.
+
+Regression tests first reproduced the lost later diagnostics and lost companion
+excerpt. They cover 12 simultaneous verbose failures, stdout/stderr sharing,
+tracked-input changes, truncated output, current hashes after edits, shortened
+files, unplanned path exclusion, and transcript exclusion. Verification:
+`uv run ruff check .`, `uv run ruff format --check .`, `git diff --check` pass;
+`uv run pytest -q`: **95 passed in 24.85 seconds**. Raw log:
+`~/.local/share/autocoder/stage0/repair-efficiency-verification.log`.
+Frozen v5 protocol/engine checksum verification also passes unchanged.
+
+A new trial, `tui-prompt-utf8-qwen128k-v2`, task
+`dd21c26b2c1f45c8bec2fa320a7148b7`, uses base `da3517e`. Its request bytes and
+project policy are identical to v1 except the external state directory; this
+identity was checked before starting inference. Model, digest, application context,
+98,304 input allowance, other limits, checks and runtime pin are unchanged. V1
+policy, task worktree and all evidence remain preserved. No download or budget
+increase was requested. This is an exploratory comparison, not a frozen benchmark
+or a controlled claim of causal improvement from one stochastic run.
+
+### V2 outcome
+
+**BUDGET_EXHAUSTED**, detail `request_tokens`; final phase ORIENT during the
+bounded replan. Usage: 94.98 seconds, 87,190 input tokens, 5,307 output tokens,
+20 tool calls and two repairs. As in v1, the next conservative reservation did
+not fit the remaining allowance. No budget increase or additional trial followed.
+
+The live journal demonstrates the new prompt content: the first fresh REPAIR
+request has a 1,304-character diagnostic naming `regression`, `lint`, and `format`.
+Its current source frames cover `tui.py` lines 220–280 and the most recently
+observed companion range, test lines 1–35. A truncated IMPLEMENT response was
+fully discarded, checks ran, and repair started from this fresh public evidence.
+
+The model added the required regression test and formatted both source edits and
+new test. The second candidate verification passed independent UTF-8 behavior,
+existing-test/unrelated-function preservation, Ruff lint and Ruff formatting.
+However, public pytest failed: new `test_prompt_utf8` calls `Terminal()` without
+its required `config` argument. Inspection also finds that the test does not open
+an input prompt before exercising printable input. The constructor failure is the
+observed runtime failure; subsequent assertions did not execute. No complete
+candidate verification or candidate commit was recorded.
+
+Diff artifact:
+`1fef7eae91d45777947992692307b8473a6559b16aacd730ec1eb079825d6b3b`.
+Both edited files remain in the private task worktree; the main checkout's
+Unicode bug is deliberately unchanged. V1 failed with missing test/lint/format;
+v2 passes behavior/lint/format but has an invalid test setup. This is progress
+in the retained artifacts, not successful autonomous completion or proof of
+causal improvement from a single comparison. Held-out, remote CI and human
+acceptance remain `not_run`. No merge or push occurred.

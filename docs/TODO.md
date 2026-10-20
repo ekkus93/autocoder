@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite now passes 92 tests (67 at the v0 evidence checkpoint).
+controlled dependency preparation are implemented. The full suite now passes 95 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -41,7 +41,11 @@ The latest two-file live trial passed its configured checks at the larger
 merged locally and the main suite passes 92 tests. The follow-up Unicode input
 trial exercised incomplete-response recovery but exhausted input before adding
 its regression test or satisfying formatting; it remains failed and unmerged.
-See the [second-task checkpoint](evidence/SECOND_TASK_2026-10-20.md).
+A follow-up adds shared failure diagnostics and fresh retained source ranges;
+the 95-test controller suite passes. The identical-policy rerun added a test and
+passed behavior/lint/format, but exhausted input after its new test failed on
+invalid Terminal setup. Neither Unicode candidate is verified or merged. See
+the [second-task checkpoint](evidence/SECOND_TASK_2026-10-20.md).
 These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist
