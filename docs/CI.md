@@ -1,4 +1,31 @@
-# Optional GitHub Actions client
+# GitHub Actions CI
+
+## Automatic verification
+
+[`.github/workflows/verify.yml`](../.github/workflows/verify.yml) runs on branch
+pushes, pull requests, version tags (`v*`), and manual dispatch. It uses GitHub-hosted
+Ubuntu 24.04; no self-hosted runner is required.
+
+The workflow installs pinned uv/Python versions, creates the locked environment,
+prepares bubblewrap and a systemd user session, and qualifies the actual sandbox
+before running lint, formatting and the complete Python/Rust test suite. Runner
+setup grants `/usr/bin/bwrap` scoped AppArmor user-namespace access when required;
+it does not change the global user-namespace restriction. Confinement failures
+fail CI. No local Ollama server or model inference is required by these tests.
+
+### Artifact retention
+
+Only a **successful push of a `v*` release tag** builds distributions and uploads
+artifacts. The upload contains the wheel/source archive, JUnit results, and sandbox
+qualification JSON, retained for 14 days. Branch, pull-request and manual runs
+upload no artifacts, including on failures. Dependency cache saving is disabled.
+GitHub's ordinary job logs still exist according to repository log retention.
+
+Third-party actions are pinned to commits. Jobs use read-only repository access,
+checkout does not persist credentials, and newer runs supersede older runs for
+the same branch without cancelling release-tag runs.
+
+## Optional operator client
 
 `autocoder-ci` is an operator CLI, separate from the model's tool gateway. It can
 prepare a dispatch plan, send one explicitly approved dispatch, and inspect an
@@ -64,23 +91,11 @@ actually checked out or tested. Review the selected workflow before use.
 
 ## Verification status
 
-Local tests cover approval, ambiguous dispatches, moving refs, mismatched runs,
-output bounds, literal JSON inputs, and read-only retries. No live dispatch or CI
-pass has been claimed. The repository had no Actions workflows during inspection;
-no repository runners were registered either. The owner selected preparing the
-workflow here. A qualified runner, publication and an approved plan are needed
-for live qualification.
-
-A local draft, [`.github/workflows/verify.yml`](../.github/workflows/verify.yml),
-provides manual dispatch only, a sandbox probe, locked `uv` setup, lint, formatting,
-and the complete suite. It requires a self-hosted Linux X64 runner labeled
-`autocoder-sandbox`, with `uv`, Python and the qualified native sandbox prerequisites
-already installed. This avoids assuming hosted runners provide the required
-user namespaces/cgroups/systemd user session. The checkout action is pinned to
-commit `11d5960a326750d5838078e36cf38b85af677262` (resolved from its official `v4`
-ref during preparation), with credential persistence disabled. Publishing this
-workflow, provisioning a runner, and approving a live dispatch remain operator
-steps; no CI runtime result is inferred from this draft.
+The operator client has local tests for approval, ambiguous dispatches, moving
+refs, mismatched runs, output bounds, literal JSON inputs and read-only retries.
+Automatic branch/PR CI is independent of the client's explicitly approved
+`workflow_dispatch` path. Live run results and exact revisions are recorded in
+the [CI evidence checkpoint](evidence/GITHUB_ACTIONS_2026-10-19.md).
 
 Command behavior follows the official [workflow dispatch manual](https://cli.github.com/manual/gh_workflow_run)
 and [GitHub Actions REST API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run).

@@ -17,6 +17,13 @@ Enter tasks, watch progress, inspect diffs/evidence, stop/resume, and record hum
 decisions. See the [task guide](docs/V0.md#terminal-interface) for configuration and
 keys, and the [optional CI client](docs/CI.md) for reviewed workflow dispatches.
 
+## Continuous integration
+
+GitHub Actions runs lint, formatting, the sandbox probe, and the complete test
+suite on hosted Ubuntu for pushes and pull requests. Only successful `v*` release
+tag pushes save build/test artifacts (14 days); regular runs save no artifacts
+or dependency caches. See [CI setup](docs/CI.md).
+
 ## Development
 
 Native Ubuntu requires Git, Python 3.12+ and `uv`; Docker/Podman are unnecessary.

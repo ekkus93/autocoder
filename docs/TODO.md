@@ -1,6 +1,6 @@
 # Local AI Coder — Implementation TODO
 
-**Status:** v0 and terminal UI locally verified; CI tools prepared, live CI awaits runner/publication
+**Status:** v0 and terminal UI locally verified; hosted CI configured, first remote run pending
 **Date:** 2026-10-19  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
@@ -23,9 +23,10 @@ retain their untested portions as deferred.
 
 P8-01's native terminal client is verified, P8-03's source/privacy evaluation is
 recorded, and P8-07's workload review retains JSONL. P8-04's CI wrapper and the
-owner-requested lint/test workflow are prepared locally. GitHub has no registered
-repository runners or published workflows: live qualification needs runner
-provisioning and publication, followed by approval of a concrete dispatch plan.
+owner-requested lint/test workflow now uses hosted Ubuntu with automatic branch/PR
+checks and artifacts only for successful `v*` tag pushes. No self-hosted runner is
+required. See the [hosted CI checkpoint](evidence/GITHUB_ACTIONS_2026-10-19.md) for
+remote qualification; the operator client still requires an approved dispatch plan.
 P8-02/P8-05/P8-06 remain conditional and untested, as detailed in the
 [P8 checkpoint](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md). See the
 [v0 evidence and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md)
@@ -237,7 +238,7 @@ local scope verified, reviewed 2026-10-19; remote CI/hardware/human patch accept
 - [x] **P8-03** Evaluate SearXNG and Fetch MCP for optional public search with explicit privacy/network policy; no paid API dependency.
   Evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | pinned upstream source/configuration review | evaluation complete; retain offline core, services/adapters not installed or runtime-qualified | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md) | reviewed 2026-10-20T00:01:33Z
 - [ ] **P8-04** Add `gh` wrapper for approved GitHub Actions dispatch and exact-commit CI inspection, with retries, output bounds and no uncontrolled remote mutation.
-  Partial evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | four CI tests and local workflow commands pass | wrapper and requested workflow prepared; live CI awaits qualified runner, publication, concrete dispatch approval | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md).
+  Partial evidence: `852b1e8fa8dfa7507021f4eaeb5c61f3773a71f0` | four CI tests and local workflow commands pass | wrapper prepared; hosted automatic CI configured with release-only artifacts; operator dispatch remains separately approved | [P8 report](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md).
 - [ ] **P8-05** Evaluate separate Research/Architect/Developer/Reviewer agents **only** against the same single-loop baseline and equal budgets; keep the simpler loop unless task success measurably improves.
 - [ ] **P8-06** Evaluate multi-model role routing, alternate quantizations, Kotlin/Android testing and richer memory or dashboard only when driven by task evidence.
 - [x] **P8-07** Consider SQLite migration only if JSONL query/transaction/concurrency requirements demonstrate a need; preserve replay compatibility.
@@ -246,8 +247,9 @@ local scope verified, reviewed 2026-10-19; remote CI/hardware/human patch accept
 P8-02 requires a real docs-retrieval gap (SPEC §5.3); none has been demonstrated.
 P8-05 has no role-ablation result, and P8-06 remains task-evidence conditional.
 These unchecked items are pending experiments, not completed integrations.
-P8-04 now needs owner assistance to provide a qualified runner and publish the
-reviewed workflow before a concrete dispatch can be approved.
+P8-04 uses hosted CI after the owner requested GitHub Actions setup; no runner
+provisioning is needed. Operator-client dispatch qualification remains separate
+from automatic push/PR verification.
 
 ## Completion record template
 

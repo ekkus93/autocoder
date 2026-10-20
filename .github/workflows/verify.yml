@@ -1,33 +1,71 @@
 name: Verify autocoder
 
 on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: autocoder-verification-${{ github.repository }}
-  cancel-in-progress: false
+  group: autocoder-verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   verify:
-    # Requires the same user-namespace, cgroup and systemd-user qualification as local tests.
-    runs-on: [self-hosted, Linux, X64, autocoder-sandbox]
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.12.9'
+          python-version: '3.12.10'
+          enable-cache: false
+      - name: Prepare hosted runner
+        run: bash .github/scripts/prepare-runner.sh
       - name: Install locked environment
         run: uv sync --locked
       - name: Qualify sandbox
-        run: >-
-          uv run autocoder sandbox-probe
-          --output "$RUNNER_TEMP/autocoder-probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from autocoder.sandbox import probe
+          result = probe()
+          path = Path(os.environ['RUNNER_TEMP']) / 'autocoder-ci/reports/sandbox.json'
+          path.write_text(json.dumps(result, indent=2) + '\n')
+          print(json.dumps(result))
+          if result['status'] != 'VERIFIED_LOCAL':
+              raise SystemExit('Sandbox qualification failed; checks will not run')
+          PY
       - name: Lint
         run: uv run ruff check .
       - name: Check formatting
         run: uv run ruff format --check .
       - name: Test complete suite
-        run: uv run pytest -q
+        run: uv run pytest -q --junitxml="$RUNNER_TEMP/autocoder-ci/reports/junit.xml"
+      - name: Build release distributions
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: uv build --out-dir "$RUNNER_TEMP/autocoder-ci/dist"
+      - name: Save tagged release artifacts
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: autocoder-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/autocoder-ci/dist/*
+            ${{ runner.temp }}/autocoder-ci/reports/*.xml
+            ${{ runner.temp }}/autocoder-ci/reports/sandbox.json
+          if-no-files-found: error
+          retention-days: 14
