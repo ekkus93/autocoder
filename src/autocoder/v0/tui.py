@@ -229,7 +229,11 @@ class Terminal:
                 self.submit()
             elif key in {"\b", "\x7f", curses.KEY_BACKSPACE}:
                 self.input = self.input[:-1]
-            elif isinstance(key, str) and key.isprintable() and len(self.input.encode()) < 8192:
+            elif (
+                isinstance(key, str)
+                and key.isprintable()
+                and len((self.input + key).encode()) <= 8192
+            ):
                 self.input += key
             return False
         if key == "q":
