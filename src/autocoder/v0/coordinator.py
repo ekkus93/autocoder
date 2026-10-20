@@ -32,6 +32,30 @@ class Coordinator:
         self.checks = None
         self.gateway = None
         self.navigator = None
+        self.source_ranges = {}
+
+    def remember_source(self, observation):
+        if isinstance(observation, dict) and all(
+            key in observation for key in ("path", "source", "start", "end", "sha256")
+        ):
+            self.source_ranges[observation["path"]] = (observation["start"], observation["end"])
+
+    def implementation_evidence(self, paths, task):
+        self.workspace.assert_expected()
+        evidence = self.gateway.evidence(paths, request=task)
+        limit = min(3000, 12000 // max(1, len(evidence["files"])))
+        for name, frame in list(evidence["files"].items()):
+            if name in self.source_ranges and not frame.get("focused_symbol"):
+                start, end = self.source_ranges[name]
+                # Re-read the range, not the old body/hash. Edits may also shorten the file.
+                last = max(1, frame["total_lines"])
+                current = self.gateway.read(name, min(start, last), min(end, last))
+                current["truncated"] |= len(current["source"]) > limit
+                current["source"] = current["source"][:limit]
+                current["end"] = current["start"] + max(1, len(current["source"].splitlines())) - 1
+                evidence["files"][name] = current
+        self.workspace.assert_expected()
+        return evidence
 
     def transition(self, target):
         if target not in TRANSITIONS[self.phase]:
@@ -112,6 +136,7 @@ class Coordinator:
                         stop_discovery = True
                         break
                     retrieved.append(observation)
+                    self.remember_source(observation)
                     messages.append(
                         {
                             "role": "tool",
@@ -228,7 +253,7 @@ class Coordinator:
         messages = self.builder.build(
             self.phase,
             instruction,
-            self.gateway.evidence(plan.paths, request=task),
+            self.implementation_evidence(plan.paths, task),
             plan.model_dump(),
             failure,
         )
@@ -243,7 +268,7 @@ class Coordinator:
             if rendered + 2560 > self.project.context * 0.75 or not self.model.fits_request_budget(
                 messages, tools=self.gateway.tools(), output=1536
             ):
-                evidence = self.gateway.evidence(plan.paths, request=task)
+                evidence = self.implementation_evidence(plan.paths, task)
                 expected = self.workspace.expected()
                 for path, frame in recent_source.items():
                     current = evidence["files"].get(path)
@@ -352,6 +377,7 @@ class Coordinator:
                     }
                 )
                 if isinstance(observation, dict):
+                    self.remember_source(observation)
                     if observation.get("changed"):
                         mutated = True
                         recent_source.pop(observation["path"], None)

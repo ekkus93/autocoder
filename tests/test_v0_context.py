@@ -517,3 +517,146 @@ def test_repeated_incomplete_responses_without_edits_exhaust_repair_budget(tmp_p
         assert result["changed_files"] == []
         journal = journal_for(project, result["task_id"])
         assert len([row for row in journal.read() if row["kind"] == "INCOMPLETE_RESPONSE"]) == 2
+
+
+def test_repair_diagnostic_shares_space_between_all_public_failures():
+    from autocoder.v0.verification import diagnostic
+
+    records = []
+    for i in range(12):
+        records.append(
+            {
+                "name": f"failure-{i}",
+                "execution": {
+                    "status": "finished",
+                    "exit_code": 1,
+                    "truncated": False,
+                    "stderr": f"stderr-{i}:" + "x" * 10000,
+                    "stdout": f"stdout-{i}:" + "y" * 10000,
+                },
+            }
+        )
+    result = diagnostic(records)
+    assert len(result) <= 4096
+    for i in range(12):
+        assert f"Check failure-{i} exited 1" in result
+        assert f"stderr-{i}:" in result
+        assert f"stdout-{i}:" in result
+    records[0]["integrity_changes"] = ["source.py"]
+    records[1]["execution"].update(exit_code=0, truncated=True)
+    result = diagnostic(records)
+    assert "Verification changed tracked inputs: source.py" in result
+    assert "Check failure-1 exited 0" in result
+    assert "truncated" in result
+    assert "Check failure-11 exited 1" in result
+    assert len(result) <= 4096
+    assert diagnostic([]) == ""
+    assert (
+        diagnostic(
+            [
+                {
+                    "name": "passing",
+                    "execution": {
+                        "status": "finished",
+                        "exit_code": 0,
+                        "truncated": False,
+                        "stderr": "passing diagnostics",
+                        "stdout": "passing output",
+                    },
+                }
+            ]
+        )
+        == ""
+    )
+
+
+@pytest.mark.parametrize("shrink", [False, True])
+def test_repair_reuses_last_observed_range_with_current_source_and_planned_scope(tmp_path, shrink):
+    from autocoder.protocol import digest
+    from autocoder.v0.schema import Plan
+
+    helper = "# padding\n" * 154 + "VALUE = 1\n# useful companion\n"
+    updated = "VALUE = 2\n" if shrink else helper.replace("VALUE = 1", "VALUE = 2")
+    with Fixture({"source.py": "VALUE = 1\n", "helper.py": helper}) as fixture:
+        calls = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal calls
+            calls += 1
+            body = json.loads(messages[1]["content"])
+            if calls == 1:
+                return answer(
+                    {
+                        "content": "earlier assistant text must not cross phases",
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "read_file_range",
+                                    "arguments": {
+                                        "path": "helper.py",
+                                        "start": 155,
+                                        "end": 156,
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                )
+            if calls == 2:
+                return answer(
+                    {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "apply_edit",
+                                    "arguments": {
+                                        "path": "helper.py",
+                                        "old": helper,
+                                        "new": updated,
+                                        "expected_sha256": digest(helper.encode()),
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                )
+            if calls == 3:
+                return answer({"content": "verify"})
+            assert len(messages) == 2
+            assert "earlier assistant text must not cross phases" not in json.dumps(messages)
+            files = body["evidence"]["files"]
+            if calls == 4:
+                frame = files["helper.py"]
+                assert frame["start"] == (1 if shrink else 155)
+                assert frame["sha256"] == digest(updated.encode())
+                assert "VALUE = 2" in frame["source"]
+                assert "VALUE = 1" not in frame["source"]
+                assert frame["end"] - frame["start"] < 120
+                assert len(frame["source"]) <= 4000
+                assert body["diagnostic"] == "current failures"
+            else:
+                assert calls == 5
+                assert list(files) == ["source.py"], "Cached ranges must not add unplanned paths"
+            return answer({"content": "verify"})
+
+        controller = coordinator_for(fixture.repository, tmp_path, transport, edit_helper=True)
+        controller.transition(Phase.REPRODUCE_AND_PLAN)
+        controller.transition(Phase.IMPLEMENT)
+        plan = Plan(
+            base_sha=controller.workspace.base_sha,
+            paths=["source.py", "helper.py"],
+            steps=["Fix source and companion"],
+            checks=["unit"],
+        )
+        asyncio.run(controller.implement("Fix the source", plan, "original failure"))
+        controller.transition(Phase.VERIFY)
+        controller.transition(Phase.REPAIR)
+        asyncio.run(controller.implement("Fix the source", plan, "current failures"))
+        asyncio.run(
+            controller.implement(
+                "Fix the source",
+                plan.model_copy(update={"paths": ["source.py"]}),
+                "current failures",
+            )
+        )
+        assert calls == 5

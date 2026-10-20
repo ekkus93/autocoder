@@ -258,14 +258,29 @@ def passed(records):
 
 
 def diagnostic(records):
-    failing = next((row for row in records if not passed([row])), None)
+    failing = [row for row in records if not passed([row])]
     if not failing:
         return ""
-    execution = failing["execution"]
-    if failing.get("integrity_changes"):
-        return "Verification changed tracked inputs: " + ", ".join(failing["integrity_changes"][:5])
-    return (
-        f"Check {failing['name']} exited {execution['exit_code']}: "
-        + execution["stderr"][:2048]
-        + execution["stdout"][:2048]
-    )[:4096]
+    headers = []
+    for row in failing:
+        execution = row["execution"]
+        headers.append(
+            f"Check {row['name']} exited {execution['exit_code']} "
+            f"({execution['status']}{'; output truncated' if execution['truncated'] else ''}):"
+        )
+    # Reserve every check's identity before sharing the remaining space between outputs.
+    allowance = max(0, (4096 - sum(map(len, headers)) - 2 * len(headers)) // len(headers))
+    sections = []
+    for row, header in zip(failing, headers, strict=True):
+        execution = row["execution"]
+        if row.get("integrity_changes"):
+            detail = "Verification changed tracked inputs: " + ", ".join(
+                row["integrity_changes"][:5]
+            )
+        else:
+            stderr, stdout = execution["stderr"], execution["stdout"]
+            # A verbose stderr must not hide stdout (or another failing check).
+            stderr_limit = min(len(stderr), allowance - min(len(stdout), allowance // 2))
+            detail = stderr[:stderr_limit] + stdout[: allowance - stderr_limit]
+        sections.append(header + "\n" + detail[:allowance])
+    return "\n".join(sections)[:4096]
