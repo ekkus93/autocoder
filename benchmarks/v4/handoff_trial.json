@@ -1,0 +1,7 @@
+{
+  "base_sha": "4639b82a408e6d0c0af068c941cbc0c67ad7de62",
+  "files": {
+    "bounds.py": "def clamp(value, lower, upper):\n    return min(value, lower)\n"
+  },
+  "task": "Fix inclusive clamping and reject reversed bounds"
+}

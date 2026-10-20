@@ -1,0 +1,109 @@
+[
+  {
+    "entry": "bounds.clamp",
+    "files": {
+      "bounds.py": "def clamp(value, lower, upper):\n    return min(value, lower)\n",
+      "tests/test_smoke.py": "# Protected public smoke contract; hidden scoring remains external.\n"
+    },
+    "id": "py-clamp",
+    "language": "python",
+    "prompt": "Fix clamp so it bounds a number inclusively; reject lower > upper with ValueError.",
+    "protected": [
+      "tests/test_smoke.py"
+    ]
+  },
+  {
+    "entry": "chunks.chunks",
+    "files": {
+      "chunks.py": "def chunks(items, size):\n    return [items[i:i+size] for i in range(0, len(items)-size, size)]\n",
+      "tests/test_smoke.py": "# Protected public smoke contract; hidden scoring remains external.\n"
+    },
+    "id": "py-chunks",
+    "language": "python",
+    "prompt": "Fix chunks to return all consecutive nonempty chunks, including the final partial chunk. Reject size <= 0 with ValueError.",
+    "protected": [
+      "tests/test_smoke.py"
+    ]
+  },
+  {
+    "entry": "unique.unique",
+    "files": {
+      "tests/test_smoke.py": "# Protected public smoke contract; hidden scoring remains external.\n",
+      "unique.py": "def unique(items):\n    return list(set(items))\n"
+    },
+    "id": "py-dedupe",
+    "language": "python",
+    "prompt": "Fix unique to remove duplicates while preserving first-seen order; support unhashable values.",
+    "protected": [
+      "tests/test_smoke.py"
+    ]
+  },
+  {
+    "entry": "config.load_enabled",
+    "files": {
+      "config.py": "from parser import parse_bool\n\ndef load_enabled(config):\n    return bool(config.get(\"enabled\", False))\n",
+      "parser.py": "def parse_bool(value):\n    return bool(value)\n",
+      "tests/test_smoke.py": "# Protected public smoke contract; hidden scoring remains external.\n"
+    },
+    "id": "py-config",
+    "language": "python",
+    "prompt": "Add case-insensitive parse_bool accepting true/yes/1 and false/no/0, stripping whitespace and raising ValueError otherwise. Make load_enabled use it, defaulting to false when enabled is missing.",
+    "protected": [
+      "tests/test_smoke.py"
+    ]
+  },
+  {
+    "entry": "clamp",
+    "files": {
+      "Cargo.toml": "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+      "src/lib.rs": "pub fn clamp(value: i64, lower: i64, upper: i64) -> i64 { value.min(lower) }\n"
+    },
+    "id": "rs-clamp",
+    "language": "rust",
+    "prompt": "Fix clamp to inclusively bound an i64. Panic if lower > upper.",
+    "protected": [
+      "Cargo.toml"
+    ]
+  },
+  {
+    "entry": "ceil_div",
+    "files": {
+      "Cargo.toml": "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+      "src/lib.rs": "pub fn ceil_div(n: u64, d: u64) -> u64 { (n + d - 1) / d }\n"
+    },
+    "id": "rs-divceil",
+    "language": "rust",
+    "prompt": "Fix ceil_div for u64, including zero numerator and maximum values without overflow. Panic on zero divisor.",
+    "protected": [
+      "Cargo.toml"
+    ]
+  },
+  {
+    "entry": "contains",
+    "files": {
+      "Cargo.toml": "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+      "src/lib.rs": "pub fn contains(start: i64, end: i64, value: i64) -> bool { value >= start && value <= end }\n"
+    },
+    "id": "rs-ranges",
+    "language": "rust",
+    "prompt": "Fix contains to include start and exclude end. Empty or reversed ranges contain no value.",
+    "protected": [
+      "Cargo.toml"
+    ]
+  },
+  {
+    "entry": "config::enabled",
+    "files": {
+      "Cargo.toml": "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+      "src/config.rs": "pub fn enabled(value: &str) -> Option<bool> { Some(value == \"true\") }\n",
+      "src/lib.rs": "pub mod parser;\npub mod config;\n",
+      "src/parser.rs": "pub fn parse_bool(value: &str) -> Option<bool> { Some(!value.is_empty()) }\n"
+    },
+    "id": "rs-config",
+    "language": "rust",
+    "prompt": "Implement parse_bool accepting true/yes/1 and false/no/0 case-insensitively after trimming; return None for invalid input. Make enabled delegate to parse_bool and preserve its None result.",
+    "protected": [
+      "Cargo.toml"
+    ]
+  }
+]

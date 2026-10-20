@@ -1,0 +1,57 @@
+{
+  "not_yet_installed": [
+    "aider",
+    "microsoft-agent-framework"
+  ],
+  "other_tool_licenses": {
+    "ollama": "MIT",
+    "opencode": "MIT",
+    "rust": "MIT OR Apache-2.0",
+    "uv": "MIT OR Apache-2.0"
+  },
+  "serena": {
+    "application_license": "GPL-3.0-or-later",
+    "commit": "d9e4c796fae0207ba6848d1df4b331122a5567b5",
+    "integration": "Independent MCP process; no Serena imports or vendored source",
+    "license_source": "https://github.com/oraios/serena/blob/d9e4c796fae0207ba6848d1df4b331122a5567b5/LICENSE",
+    "packages": {
+      "mcp": {
+        "license": "MIT",
+        "version": "2.2.0"
+      },
+      "pydantic": {
+        "license": "MIT",
+        "version": "2.12.5"
+      },
+      "serena-agent": {
+        "license": "GPL-3.0-or-later",
+        "version": "2.0.1.dev0"
+      }
+    },
+    "solidlsp_license": "MIT",
+    "source": "git+https://github.com/oraios/serena.git@d9e4c796fae0207ba6848d1df4b331122a5567b5",
+    "tool_inventory": " * `activate_project`: Activates a project based on the project name or path.\n * `create_text_file`: Creates/overwrites a file in the project directory.\n * `delete_lines`: Deletes a range of lines within a file.\n * `delete_memory`: Delete a memory file.\n * `edit_memory`: Replaces content matching a regular expression in a memory.\n * `execute_shell_command`: Executes a shell command.\n * `find_declaration`: Finds the declaration/definition of a symbol\n * `find_file`: Finds files in the given relative paths\n * `find_implementations`: Finds the implementations of a symbol\n * `find_referencing_symbols`: Finds symbols that reference the given symbol\n * `find_symbol`: Performs a global (or local) search using the language server backend.\n * `get_current_config`: Prints the current configuration of the agent, including the active and available projects, tools, contexts, and modes.\n * `get_diagnostics_for_file`: Gets diagnostics for a file, grouped by symbol.\n * `get_diagnostics_for_symbol`: Gets diagnostics for a symbol and, optionally, for symbols that reference it.\n * `get_symbols_overview`: Gets an overview of the top-level symbols defined in a given file.\n * `initial_instructions`: Provides instructions Serena usage (i.e. the 'Serena Instructions Manual')\n    for clients that do not read the initial instructions when the MCP server is connected.\n * `insert_after_symbol`: Inserts content after the end of the definition of a given symbol.\n * `insert_at_line`: Inserts content at a given line in a file.\n * `insert_before_symbol`: Inserts content before the beginning of the definition of a given symbol.\n * `jet_brains_debug`: Provides debugging functionality (run configs, breakpoints, stepping, inspection, and evaluation)\n    via a persistent debug REPL connected to the JetBrains IDE.\n * `jet_brains_find_declaration`: Finds the declaration of a symbol using the JetBrains backend\n * `jet_brains_find_implementations`: Finds the implementations of a symbol using the JetBrains backend\n * `jet_brains_find_referencing_symbols`: Finds symbols that reference the given symbol using the JetBrains backend\n * `jet_brains_find_symbol`: Performs a global (or local) search for symbols using the JetBrains backend\n * `jet_brains_get_symbols_overview`: Retrieves an overview of the top-level symbols within a specified file using the JetBrains backend\n * `jet_brains_inline_symbol`: Inlines a symbol using the JetBrains backend, replacing all call sites with the symbol's body\n * `jet_brains_list_inspections`: Lists available JetBrains IDE inspections, optionally filtered by language or group.\n * `jet_brains_move`: Moves a symbol, file or directory to a new location using the JetBrains backend, updating all references\n * `jet_brains_rename`: Renames a symbol, file or directory throughout the codebase using the JetBrains backend.\n * `jet_brains_run_inspections`: Runs JetBrains IDE inspections on a file and returns the results.\n * `jet_brains_safe_delete`: Safely deletes a symbol using the JetBrains backend, checking for remaining usages first\n * `jet_brains_type_hierarchy`: Retrieves the type hierarchy (supertypes and/or subtypes) of a symbol using the JetBrains backend\n * `list_dir`: Lists files and directories in the given directory (optionally with recursion).\n * `list_memories`: Lists available memories.\n * `list_queryable_projects`: Tool for listing all projects that can be queried by the QueryProjectTool.\n * `onboarding`: Performs onboarding (identifying the project structure and essential tasks, e.g. for testing or building).\n * `open_dashboard`: Opens the Serena web dashboard in the default web browser.\n    The dashboard provides logs, session information, and tool usage statistics.\n * `query_project`: Tool for querying external project information (i.e. information from projects other than the current one),\n    by executing a read-only tool.\n * `read_file`: Reads a file within the project directory.\n * `read_memory`: Reads the content of a memory file.\n * `remove_project`: Removes a project from the Serena configuration.\n * `rename_memory`: Renames or moves a memory, updating references that are marked with the `mem:` prefix.\n * `rename_symbol`: Renames a symbol throughout the codebase using language server refactoring capabilities.\n    For JB, we use a separate tool.\n * `replace_content`: Replaces content in a file (optionally using regular expressions).\n * `replace_in_files`: Replaces occurrences of a pattern across multiple files, with dry-run preview and per-occurrence selection.\n * `replace_lines`: Replaces a range of lines within a file with new content.\n * `replace_symbol_body`: Replaces the full definition of a symbol using the language server backend.\n * `restart_language_server`: Restarts the language server(s).\n * `safe_delete_symbol`: \n * `search_for_pattern`: \n * `serena_info`: Provides information about an advanced topic on demand, facilitating context-efficiency.\n * `serena_repl`: Executes Python code which accesses Serena's functionality programmatically.\n * `write_memory`: Write some information (utf-8-encoded) about this project that can be useful for future tasks to a memory in md format.\n    The memory name should be meaningful.\n"
+  },
+  "system_copyright_files": {
+    "bubblewrap": {
+      "path": "/usr/share/doc/bubblewrap/copyright",
+      "sha256": "229a402fddba5c81005950f28de162359383cba731f5b859b8f82a03c338bf01"
+    },
+    "gcc-13": {
+      "path": "/usr/share/doc/gcc-13/copyright",
+      "sha256": "08c6f3dee4c19aa1e57eb7d4ad45829b2e99656313bd07fa0922e2553f500be5"
+    },
+    "git": {
+      "path": "/usr/share/doc/git/copyright",
+      "sha256": "e7efbd67e2dac6d950e4607b541778a610561ec77562b8b0a9704a7a3fcbc39c"
+    },
+    "python3.12": {
+      "path": "/usr/share/doc/python3.12/copyright",
+      "sha256": "f1cbf908e1daa8789b389fdcf17811ed36b675d736b39a103591399861350382"
+    },
+    "ripgrep": {
+      "path": "/usr/share/doc/ripgrep/copyright",
+      "sha256": "b8badd31db4a52167bf97284ce2ad9ae6fe3effe1df087db0c8687a02c898f9c"
+    }
+  }
+}

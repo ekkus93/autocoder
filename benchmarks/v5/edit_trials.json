@@ -1,0 +1,392 @@
+[
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-00",
+    "kind": "unique",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-01",
+    "kind": "stale",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "efc90f1caf198fdac862ea45a5f6cb90654acd89534adc40c482841521e693b0",
+    "files": {
+      "module.py": "def value():\n    return 0\n\ndef other():\n    return 0\n"
+    },
+    "id": "edit-02",
+    "kind": "ambiguous",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-03",
+    "kind": "multiline",
+    "maximum_recoveries": 1,
+    "new": "def value():\n    return 1",
+    "old": "def value():\n    return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-04",
+    "kind": "wrong_file",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "missing.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-05",
+    "kind": "unique",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-06",
+    "kind": "stale",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "efc90f1caf198fdac862ea45a5f6cb90654acd89534adc40c482841521e693b0",
+    "files": {
+      "module.py": "def value():\n    return 0\n\ndef other():\n    return 0\n"
+    },
+    "id": "edit-07",
+    "kind": "ambiguous",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-08",
+    "kind": "multiline",
+    "maximum_recoveries": 1,
+    "new": "def value():\n    return 1",
+    "old": "def value():\n    return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-09",
+    "kind": "wrong_file",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "missing.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-10",
+    "kind": "unique",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-11",
+    "kind": "stale",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "efc90f1caf198fdac862ea45a5f6cb90654acd89534adc40c482841521e693b0",
+    "files": {
+      "module.py": "def value():\n    return 0\n\ndef other():\n    return 0\n"
+    },
+    "id": "edit-12",
+    "kind": "ambiguous",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-13",
+    "kind": "multiline",
+    "maximum_recoveries": 1,
+    "new": "def value():\n    return 1",
+    "old": "def value():\n    return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-14",
+    "kind": "wrong_file",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "missing.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-15",
+    "kind": "unique",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-16",
+    "kind": "stale",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "efc90f1caf198fdac862ea45a5f6cb90654acd89534adc40c482841521e693b0",
+    "files": {
+      "module.py": "def value():\n    return 0\n\ndef other():\n    return 0\n"
+    },
+    "id": "edit-17",
+    "kind": "ambiguous",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-18",
+    "kind": "multiline",
+    "maximum_recoveries": 1,
+    "new": "def value():\n    return 1",
+    "old": "def value():\n    return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-19",
+    "kind": "wrong_file",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "missing.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-20",
+    "kind": "unique",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-21",
+    "kind": "stale",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "efc90f1caf198fdac862ea45a5f6cb90654acd89534adc40c482841521e693b0",
+    "files": {
+      "module.py": "def value():\n    return 0\n\ndef other():\n    return 0\n"
+    },
+    "id": "edit-22",
+    "kind": "ambiguous",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-23",
+    "kind": "multiline",
+    "maximum_recoveries": 1,
+    "new": "def value():\n    return 1",
+    "old": "def value():\n    return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-24",
+    "kind": "wrong_file",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "missing.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-25",
+    "kind": "unique",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-26",
+    "kind": "stale",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "efc90f1caf198fdac862ea45a5f6cb90654acd89534adc40c482841521e693b0",
+    "files": {
+      "module.py": "def value():\n    return 0\n\ndef other():\n    return 0\n"
+    },
+    "id": "edit-27",
+    "kind": "ambiguous",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": true,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-28",
+    "kind": "multiline",
+    "maximum_recoveries": 1,
+    "new": "def value():\n    return 1",
+    "old": "def value():\n    return 0",
+    "path": "module.py"
+  },
+  {
+    "expected_apply": false,
+    "expected_sha256": "4480052910accecafe6f206dbd8be95b8447320ff6d2332761858fd6399c1255",
+    "files": {
+      "module.py": "def value():\n    return 0\n"
+    },
+    "id": "edit-29",
+    "kind": "wrong_file",
+    "maximum_recoveries": 1,
+    "new": "return 1",
+    "old": "return 0",
+    "path": "missing.py"
+  }
+]

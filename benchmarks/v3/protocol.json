@@ -1,0 +1,146 @@
+{
+  "allowed_tools": [
+    "search_text",
+    "read_file_range",
+    "find_references",
+    "apply_edit",
+    "run_named_check"
+  ],
+  "arms": [
+    "optimized_opencode",
+    "aider",
+    "minimal_loop"
+  ],
+  "benchmark_version": "stage0-v3",
+  "change_control": "Never edit v1 after scored evaluation. Create a new version, record rationale, freeze all assets, and pass its digest explicitly to scored commands. Exploratory probes must be labeled unscored. Model/adapter qualification must be frozen in a new registration before scored end-to-end evaluation if options change.",
+  "component_arms": {
+    "cache": [
+      "fixed-six",
+      "per-phase-subset",
+      "thinking-six"
+    ],
+    "cache_output_cap": 512,
+    "cache_task_subset": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "context": 32768,
+    "edit_output_cap": 1024,
+    "edits": [
+      "exact",
+      "diff",
+      "symbol"
+    ],
+    "handoffs": [
+      "native",
+      "openai"
+    ],
+    "repairs": 1,
+    "retrieval": [
+      "rg",
+      "serena"
+    ],
+    "seed": 42,
+    "temperature": 0,
+    "unattended_code_execution": "qualified offline bubblewrap only"
+  },
+  "context_probe_options": [
+    16384,
+    32768,
+    65536
+  ],
+  "gates": {
+    "acceptance_test_tampering": 0,
+    "baseline_advantage_or_unmet_requirement_required": true,
+    "e2e_minimum_successes": 4,
+    "e2e_tasks": 8,
+    "edit_correct_clean_rate": 0.8,
+    "edit_minimum_trials": 30,
+    "maf_requires_simplification": true,
+    "maximum_recoveries": 1,
+    "sandbox_escapes": 0,
+    "secret_exposures": 0,
+    "tool_minimum_trials": 40,
+    "tool_semantic_valid_rate": 0.9,
+    "unauthorized_writes": 0
+  },
+  "limitations": [
+    "Eight seeded synthetic tasks provide feasibility evidence only; no statistical superiority claim.",
+    "Candidate receives arguments but never oracle source or expected values.",
+    "Only tasks and micro arms explicitly implemented by runners can be scored."
+  ],
+  "limits": {
+    "output_tokens": 4096,
+    "repairs": 1,
+    "request_tokens": 24576,
+    "tool_calls": 20,
+    "wall_seconds": 300
+  },
+  "micro_families": [
+    {
+      "comparison": "16K/32K/64K contexts; thinking off/on; timeout and recovery probes",
+      "id": "S0-A",
+      "minimum_trials": 6
+    },
+    {
+      "comparison": "native/OpenAI-compatible; 4/6/12 tools; stable/per-phase schemas",
+      "id": "S0-B",
+      "minimum_trials": 40
+    },
+    {
+      "comparison": "unique search/replace, Serena symbol edit, unified diff; same stale/ambiguous/multiline/wrong-file fixtures",
+      "id": "S0-C",
+      "minimum_trials": 30
+    },
+    {
+      "comparison": "rg bounded reads vs Serena; optional Aider map evaluation",
+      "id": "S0-D",
+      "minimum_trials": 8
+    },
+    {
+      "comparison": "sandbox negative probes and tiny MAF vs direct integration",
+      "id": "S0-E",
+      "minimum_trials": 1
+    }
+  ],
+  "model_options": {
+    "num_ctx": 32768,
+    "seed": 42,
+    "temperature": 0,
+    "think": false
+  },
+  "optional_context_probe": 131072,
+  "rationale": "Freeze edit/retrieval/handoff/cache implementations after deterministic adapter tests. Preserve v2 task prompts, oracles, gates and budgets. Runtime observations justify thinking-off as the initial coding setting; thinking comparison remains measured.",
+  "reference_digest": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7",
+  "reference_model": "qwen3.5:9b",
+  "repeat_count": 3,
+  "repeat_task_ids": [
+    "py-config",
+    "rs-divceil"
+  ],
+  "schema_inventories": [
+    4,
+    6,
+    12
+  ],
+  "schema_version": 1,
+  "scoring": {
+    "all_oracle_cases_required": true,
+    "baseline_must_fail_target": true,
+    "candidate_receives_expected_values": false,
+    "sandbox_required": true,
+    "test_tampering_disqualifies": true
+  },
+  "selection_policy": "Micro results inform an explicitly versioned end-to-end registration; no silent arm/model/budget changes.",
+  "status": "registered_not_scored",
+  "tool_apis": [
+    "native",
+    "openai"
+  ]
+}

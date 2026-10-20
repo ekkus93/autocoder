@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "local-autocoder"
+version = "0.1.0"
+description = "Finite, reproducible Stage 0 experiments for a local coding loop"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    "httpx>=0.28,<1",
+    "pydantic>=2.12,<3",
+]
+
+[project.scripts]
+autocoder = "autocoder.cli:main"
+autocoder-task = "autocoder.v0.cli:main"
+autocoder-tui = "autocoder.v0.tui:main"
+autocoder-ci = "autocoder.v0.ci:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.14,<1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autocoder"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Frozen benchmark drivers are checksum-bound experiment assets.
+extend-exclude = ["benchmarks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
