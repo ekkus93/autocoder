@@ -17,6 +17,10 @@ READ_TOOLS = {"search_text", "read_file_range", "read_symbol", "find_references"
 WRITE_PHASES = {Phase.IMPLEMENT, Phase.REPAIR}
 
 
+class RepeatedObservation(BudgetExhausted):
+    """Read loop stopped before repeating an unchanged external observation."""
+
+
 class ToolGateway:
     def __init__(self, workspace, budget, checks, navigator=None):
         self.workspace, self.project = workspace, workspace.project
@@ -187,7 +191,8 @@ class ToolGateway:
         )
         self.fingerprints[identity] = self.fingerprints.get(identity, 0) + 1
         if self.fingerprints[identity] >= 2:
-            raise BudgetExhausted("duplicate tool operation without source progress")
+            error = RepeatedObservation if name in READ_TOOLS else BudgetExhausted
+            raise error("duplicate tool operation without source progress")
         input_ref = self.journal.artifact({"tool": name, "arguments": args.model_dump()})
         self.journal.emit(
             "TOOL_CALL", evidence_ref=input_ref, data={"tool": name, "fingerprint": identity}

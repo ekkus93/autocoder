@@ -9,7 +9,7 @@ from autocoder.execution import SandboxUnavailable
 from autocoder.inference import InferenceError
 from autocoder.protocol import digest
 from autocoder.provenance import inventory, request_json
-from autocoder.v0.gateway import ToolGateway
+from autocoder.v0.gateway import RepeatedObservation, ToolGateway
 from autocoder.v0.journal import NeedsUser
 from autocoder.v0.model import ContextBuilder, ModelBackend, TaskBudget
 from autocoder.v0.navigation import Navigation
@@ -79,6 +79,7 @@ class Coordinator:
                 "When enough source is retrieved, reply without tools.",
                 evidence,
             )
+            stop_discovery = False
             for _ in range(4):
                 if not self.model.fits_context(
                     messages, tools=self.gateway.tools(), output=768
@@ -100,9 +101,16 @@ class Coordinator:
                 retrieved = []
                 for call in calls:
                     function = call.get("function", {})
-                    observation = self.gateway.dispatch(
-                        function.get("name"), function.get("arguments")
-                    )
+                    try:
+                        observation = self.gateway.dispatch(
+                            function.get("name"), function.get("arguments")
+                        )
+                    except RepeatedObservation:
+                        self.journal.emit(
+                            "REPETITION_STOP", data={"action": "build orientation handoff"}
+                        )
+                        stop_discovery = True
+                        break
                     retrieved.append(observation)
                     messages.append(
                         {
@@ -126,6 +134,8 @@ class Coordinator:
                     else observation
                     for observation in retrieved
                 ]
+                if stop_discovery:
+                    break
 
         def validate(value):
             if value.base_sha != self.workspace.base_sha:
@@ -275,7 +285,13 @@ class Coordinator:
             messages.append(dict(message, role="assistant"))
             for call in calls:
                 function = call.get("function", {})
-                observation = self.gateway.dispatch(function.get("name"), function.get("arguments"))
+                try:
+                    observation = self.gateway.dispatch(
+                        function.get("name"), function.get("arguments")
+                    )
+                except RepeatedObservation:
+                    self.journal.emit("REPETITION_STOP", data={"action": "verify candidate"})
+                    return
                 messages.append(
                     {
                         "role": "tool",

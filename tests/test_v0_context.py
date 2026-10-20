@@ -238,3 +238,93 @@ def test_edited_candidate_is_verified_when_another_inference_cannot_be_reserved(
         assert any(row["kind"] == "VERIFY_WITHOUT_INFERENCE" for row in journal.read())
         if correct_patch:
             assert (Path(result["worktree"]) / "greeting.py").read_text() == FIXED
+
+
+def test_repeated_orientation_read_transitions_to_a_validated_handoff(tmp_path):
+    source = "".join("# source " + "x" * 60 + "\n" for _ in range(150))
+    with Fixture({"source.py": source, "helper.py": source}) as fixture:
+        discovery = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal discovery
+            if options.get("tools"):
+                discovery += 1
+                assert discovery <= 2
+                return answer(
+                    {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "read_file_range",
+                                    "arguments": {"path": "source.py", "start": 80, "end": 81},
+                                }
+                            }
+                        ]
+                    }
+                )
+            evidence = json.loads(messages[1]["content"])["evidence"]
+            frame = evidence["files"]["source.py"]
+            return answer(
+                {
+                    "content": json.dumps(
+                        {
+                            "base_sha": evidence["base_sha"],
+                            "findings": [
+                                {
+                                    "path": "source.py",
+                                    "sha256": frame["sha256"],
+                                    "start": 80,
+                                    "end": 81,
+                                    "summary": "Current observed source",
+                                }
+                            ],
+                        }
+                    )
+                }
+            )
+
+        controller = coordinator_for(fixture.repository, tmp_path, transport)
+        result = asyncio.run(controller.orient("Locate the source defect"))
+        assert result.findings[0].start == 80
+        rows = controller.journal.read()
+        assert len([row for row in rows if row["kind"] == "TOOL_CALL"]) == 1
+        assert any(row["kind"] == "REPETITION_STOP" for row in rows)
+
+
+def test_repeated_implementation_read_verifies_then_uses_bounded_repair(tmp_path):
+    from test_v0 import SOURCE, fake_model, project_for
+
+    from autocoder.v0.cli import start
+
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        base = fake_model([])
+
+        async def transport(endpoint, model, messages, budget, **options):
+            if json.loads(messages[1]["content"])["phase"] == "IMPLEMENT":
+                return answer(
+                    {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "read_file_range",
+                                    "arguments": {"path": "greeting.py", "start": 1, "end": 2},
+                                }
+                            }
+                        ]
+                    }
+                )
+            return await base(endpoint, model, messages, budget, **options)
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "VERIFIED_LOCAL", result
+        assert result["usage"]["repairs"] == 1
+        assert (fixture.repository / "greeting.py").read_text() == SOURCE
+        journal = journal_for(project, result["task_id"])
+        checks = [
+            row["status"]
+            for row in journal.read()
+            if row["kind"] == "CHECK" and row["data"]["label"] == "candidate"
+        ]
+        assert checks == ["fail", "pass"]
+        assert any(row["kind"] == "REPETITION_STOP" for row in journal.read())
