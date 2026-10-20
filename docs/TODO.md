@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite now passes 77 tests (67 at the v0 evidence checkpoint).
+controlled dependency preparation are implemented. The full suite now passes 86 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -32,6 +32,11 @@ P8-02/P8-05/P8-06 remain conditional and untested, as detailed in the
 [P8 checkpoint](evidence/P8_TERMINAL_AND_INTEGRATIONS_2026-10-19.md). See the
 [v0 evidence and acceptance matrix](evidence/V0_IMPLEMENTATION_2026-10-19.md)
 and [task command guide](V0.md). Original Stage 0 scores/registrations are unchanged.
+
+The owner’s subsequent TUI trial exposed context and input-reservation failures.
+Controller repairs and live retry limitations are recorded in the
+[context recovery checkpoint](evidence/ORIENTATION_CONTEXT_2026-10-20.md).
+These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist
 
