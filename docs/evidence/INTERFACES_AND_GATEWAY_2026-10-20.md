@@ -94,3 +94,31 @@ Constructor/setup retrieval is implemented and deterministically tested, and its
 presence is demonstrated in a real request. This run does not establish autonomous
 completion or correct fixture usage. Broad reliability remains unresolved; no
 new agents, models or larger budgets were introduced to disguise the failure.
+
+## Reviewed gateway completion
+
+The owner subsequently authorized work on the gateway patch. Reviewed commit
+`bbf569a`, merged locally as `12f39a21a5b01936e5b5f29a79d1e50d0a20a616`,
+completes the fix manually. The original model trial remains failed and unchanged.
+No new inference, model download, budget tuning or remote push was performed.
+
+The source guard now rejects starts above `max(1, len(lines))`. This preserves
+nonempty-file validation and allows only start 1 for an empty file. Empty-file
+requests ending at 1, 2 or 120 remain valid and return start/end metadata of 1;
+the candidate test's contrary assertion about end 2 was incorrect and removed.
+
+The reviewed test uses `fixture.repository` and a separate `tmp_path` for state,
+with both approved fixture files present. It exercises invalid empty-file starts
+2/100, valid empty ranges, source/base hashes, nonempty reads and EOF, positive
+starts, range ordering, the 120-line cap and unapproved paths. Existing tests and
+helpers are unchanged. This test was run against original source on base
+`5feff02e8403de897eacb1fb166d03b84e9f2d4b`: it failed with `DID NOT RAISE ValueError`.
+After the source correction, the same focused test passed.
+
+Before merge, `uv run ruff check .`, `uv run ruff format --check .` and
+`git diff --check` pass. `uv run pytest -q`: **98 passed in 31.18 seconds**.
+Raw full-suite log:
+`~/.local/share/autocoder/stage0/gateway-reviewed-verification.log`.
+Frozen v5 protocol/engine checksum verification passes unchanged. The local merge
+was clean and contains the tested source/test tree. This is reviewer-assisted
+completion, not a retroactive autonomous success, hosted CI or held-out acceptance.

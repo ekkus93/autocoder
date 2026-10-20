@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite now passes 97 tests (67 at the v0 evidence checkpoint).
+controlled dependency preparation are implemented. The full suite now passes 98 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -51,8 +51,9 @@ patch is merged locally. Bounded constructor/setup retrieval passes 97 tests,
 with a follow-up trial outside the TUI recorded in the
 [interface and gateway checkpoint](evidence/INTERFACES_AND_GATEWAY_2026-10-20.md).
 That trial passed behavior/lint/format but exhausted input with invalid fixture
-setup in its new test. The gateway candidate remains failed and unmerged;
-autonomous test setup reliability is unresolved.
+setup in its new test. The original gateway trial remains failed; the owner subsequently authorized
+reviewed completion. Its corrected fixture test and empty-file guard are now merged
+locally, with 98 tests passing. Autonomous test setup reliability remains unresolved.
 These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist
