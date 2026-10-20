@@ -18,6 +18,72 @@ from autocoder.v0.tui import CommandClient, Terminal, display_text
 from autocoder.v0.workspace import Workspace
 
 
+def test_prompt_utf8(tmp_path):
+    """Test UTF-8 byte limit handling in Terminal.key.
+
+    The TUI permits at most 8192 UTF-8 bytes in a prompt. Appending a
+    multibyte character can exceed that limit. Accept printable characters
+    only when the complete resulting input fits; reject an overflowing
+    character without changing existing input. Preserve exactly-fitting
+    ASCII and Unicode, backspace and Escape behavior.
+
+    Test cases:
+    - Rejected two-byte UTF-8 character at the limit
+    - Rejected four-byte UTF-8 character at the limit
+    - Exact fit with ASCII characters
+    - Exact fit with multibyte characters
+    - Backspace at the limit without launching subprocess
+    """
+    # Create a Terminal instance for testing
+    terminal = Terminal(tmp_path / "unused-config.json")
+    terminal.ask("new", "Task request")
+
+    # Test 1: Rejected two-byte UTF-8 character (e.g., 'é' is 2 bytes)
+    # Leave one byte free, then try to add a two-byte character.
+    input_at_limit = "a" * 8191  # A two-byte character must not overshoot by one byte.
+    terminal.input = input_at_limit
+
+    # Try to add a 2-byte UTF-8 character (é) - should be rejected
+    two_byte_char = "é"  # UTF-8: 0xC3 0xA9 = 2 bytes
+    result = terminal.key(two_byte_char)
+    assert result is False  # Should reject
+    assert terminal.input == input_at_limit  # Input unchanged
+
+    # Test 2: Rejected four-byte UTF-8 character (e.g., emoji '😀' is 4 bytes)
+    terminal.input = "a" * 8190  # 8190 ASCII chars = 8190 bytes
+    four_byte_char = "😀"  # UTF-8: 4 bytes
+    result = terminal.key(four_byte_char)
+    assert result is False  # Should reject
+    assert terminal.input == "a" * 8190  # Input unchanged
+
+    # Test 3: Exact fit with ASCII characters (should accept)
+    terminal.input = "a" * 8191
+    result = terminal.key("a")  # One key exactly fills the remaining byte.
+    assert result is False
+    assert terminal.input == "a" * 8192
+
+    # Test 4: Exact fit with multibyte characters (should accept if total <= 8192)
+    terminal.input = ""
+    # Add 4096 two-byte chars (é) = 8192 bytes exactly
+    for _ in range(4096):
+        result = terminal.key("é")
+        assert result is False
+    assert len(terminal.input.encode()) == 8192
+
+    # Test 5: Backspace at the limit (should work)
+    terminal.input = "a" * 8192
+    result = terminal.key("\b")
+    assert result is False
+    assert terminal.input == "a" * 8191
+
+    # Test 6: Escape at the limit (should clear prompt)
+    terminal.prompt = "test"
+    result = terminal.key("\x1b")
+    assert result is False
+    assert terminal.prompt is None
+    assert terminal.notice == "Input cancelled"
+
+
 def test_report_phase(tmp_path):
     """Test that report phase is preserved correctly in non-event reports."""
     with Fixture({"module.py": "VALUE = 1\n"}) as fixture:
