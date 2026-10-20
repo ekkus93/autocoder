@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite now passes 91 tests (67 at the v0 evidence checkpoint).
+controlled dependency preparation are implemented. The full suite now passes 92 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -37,8 +37,11 @@ The owner’s subsequent TUI trial exposed context and input-reservation failure
 Controller repairs and live retry limitations are recorded in the
 [context recovery checkpoint](evidence/ORIENTATION_CONTEXT_2026-10-20.md).
 The latest two-file live trial passed its configured checks at the larger
-98,304-input allowance. Its corrected review branch passes 92 tests; the main
-controller suite passes 91. The patch awaits owner review and is not merged.
+98,304-input allowance. The owner approved its corrected review branch; it is
+merged locally and the main suite passes 92 tests. The follow-up Unicode input
+trial exercised incomplete-response recovery but exhausted input before adding
+its regression test or satisfying formatting; it remains failed and unmerged.
+See the [second-task checkpoint](evidence/SECOND_TASK_2026-10-20.md).
 These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist

@@ -140,3 +140,10 @@ review branch diff. These are different artifacts: TUI approval would refer to t
 original generated commit, not the corrected review branch. No human decision,
 merge, push, remote CI, or held-out acceptance was recorded. The main checkout's
 target source/test files remain unchanged; `AGENTS.md` is untouched.
+
+### Subsequent owner approval
+
+The owner subsequently approved merging the corrected review branch. Merge
+`041655f` and the next live task's failed outcome are recorded in the
+[second-task checkpoint](SECOND_TASK_2026-10-20.md). The earlier no-merge statement
+above describes the state before this approval.
