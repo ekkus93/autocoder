@@ -84,3 +84,59 @@ no task was marked accepted, and the existing user launcher still reattaches the
 original failed task. All eight retry folders remain available for inspection.
 Further live tuning is pending an operator decision; no reliable completion claim
 for this model/task follows from these exploratory runs.
+
+## Incomplete response recovery
+
+Revision `619a97f` distinguishes an unfinished/truncated model response from a
+hard aggregate budget failure. The backend still rejects the entire response,
+including syntactically complete calls within it. During IMPLEMENT or REPAIR the
+coordinator records `INCOMPLETE_RESPONSE`, returns to deterministic verification,
+and uses the usual bounded fresh repair prompt if public checks fail. No partial
+response or tool arguments enter repair context. Orientation/planning still fail
+closed. Global time/token/tool/repair limits and private acceptance are unchanged.
+
+Five regression cases first reproduced the terminal behavior, then verified:
+correct edits pass real checks; incorrect edits require actual repair; tool calls
+in truncated and unfinished responses never execute; repeated incomplete replies
+without edits exhaust the repair budget rather than produce false success.
+
+`uv run ruff check .` and `uv run ruff format --check .` pass;
+`uv run pytest -q` reports **91 passed in 23.36 seconds**. Log:
+`~/.local/share/autocoder/stage0/truncated-response-verification.log`.
+Frozen v5 protocol/engine verification remains unchanged and passes.
+
+A new v9 trial retains v8's model, digest, two-file request, checks and limits
+(including its 98,304-input allowance). Task:
+`b5ca38e35fd448afad3738e91f4cd8e7`; folder suffix `-v9`; base `619a97f`.
+
+### V9 result and review
+
+V9 completed **VERIFIED_LOCAL** in 56.41 seconds: 66,202 input tokens, 2,972
+output tokens, 16 tool calls and zero repairs. Candidate checks passed:
+trusted behavior/test-preservation check, pytest subset (3 passed/4 deselected),
+and source/test parse check. Baseline failed the intended phase signature.
+Generated commit: `d64b99583f340f0629f3e4802d965cc957555f4b`.
+Diff artifact: `db2e182adfa363e8efc120ca404fcbf0e505b054d72fd3efb3d005395e87121a`.
+No incomplete-response recovery occurred in this live run; that behavior is
+verified by deterministic tests, not claimed as the cause of this completion.
+Completion used more than the original 49,152-token allowance.
+
+Review found an incidental status-semantics change and unformatted test code.
+A separate worktree/branch, `review/tui-report-phase`, preserves the generated
+result and adds review correction `eab92754c540ee4937de66c3a7532548da50ba6d`:
+restore original status handling and format the added test. The resulting source
+diff is only the intended phase assignment; existing test functions are preserved.
+This correction was made by the reviewer, not attributed to Ollama.
+
+The corrected branch passes Ruff lint, Ruff formatting, `git diff --check`, and
+its complete suite: **92 passed in 23.46 seconds**. The complete suite was run
+with the locked main uv environment and `PYTHONPATH` pointing explicitly at the
+review worktree's `src`, so it imports the corrected candidate. Log:
+`~/.local/share/autocoder/stage0/tui-phase-review-verification.log`.
+
+The existing launcher now opens the original verified v9 task; `--check` confirms
+its model and pinned runtime without inference. `--review-diff` prints the corrected
+review branch diff. These are different artifacts: TUI approval would refer to the
+original generated commit, not the corrected review branch. No human decision,
+merge, push, remote CI, or held-out acceptance was recorded. The main checkout's
+target source/test files remain unchanged; `AGENTS.md` is untouched.
