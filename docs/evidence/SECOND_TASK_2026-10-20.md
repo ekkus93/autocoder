@@ -143,3 +143,10 @@ v2 passes behavior/lint/format but has an invalid test setup. This is progress
 in the retained artifacts, not successful autonomous completion or proof of
 causal improvement from a single comparison. Held-out, remote CI and human
 acceptance remain `not_run`. No merge or push occurred.
+
+### Later reviewed completion
+
+Following owner approval, the Unicode patch was manually completed, fully tested
+and merged locally as `b808060`. The original v1/v2 model trials remain failed.
+See the [review/interface checkpoint](INTERFACES_AND_GATEWAY_2026-10-20.md) for the
+reviewer's test corrections, 96-test gate, and separate third-task outcome.

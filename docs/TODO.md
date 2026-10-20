@@ -1,7 +1,7 @@
 # Local AI Coder — Implementation TODO
 
 **Status:** v0 and terminal UI verified; hosted push/PR CI passes with release-only artifacts
-**Date:** 2026-10-19  
+**Date:** 2026-10-20  
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
 
@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite now passes 95 tests (67 at the v0 evidence checkpoint).
+controlled dependency preparation are implemented. The full suite now passes 97 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -46,6 +46,13 @@ the 95-test controller suite passes. The identical-policy rerun added a test and
 passed behavior/lint/format, but exhausted input after its new test failed on
 invalid Terminal setup. Neither Unicode candidate is verified or merged. See
 the [second-task checkpoint](evidence/SECOND_TASK_2026-10-20.md).
+The owner then approved manually completing the Unicode test setup; the reviewed
+patch is merged locally. Bounded constructor/setup retrieval passes 97 tests,
+with a follow-up trial outside the TUI recorded in the
+[interface and gateway checkpoint](evidence/INTERFACES_AND_GATEWAY_2026-10-20.md).
+That trial passed behavior/lint/format but exhausted input with invalid fixture
+setup in its new test. The gateway candidate remains failed and unmerged;
+autonomous test setup reliability is unresolved.
 These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist
