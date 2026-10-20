@@ -150,6 +150,21 @@ class Coordinator:
                 for f in findings.findings
             },
         }
+        # A summary can omit a companion test/source file that discovery already exposed.
+        # Carry only approved edit paths with actual read provenance into the fresh plan.
+        for path in self.project.editable_paths:
+            if path in evidence["files"] or not self.gateway.reads.get(path):
+                continue
+            start, end, sha = self.gateway.reads[path][-1]
+            entry = self.gateway.read(path, start, min(end, start + 119))
+            if entry["sha256"] != sha:
+                raise NeedsUser("Observed companion source became stale before planning")
+            evidence["files"][path] = entry
+        evidence["allowed_edit_paths"] = [
+            path for path in evidence["files"] if self.project.can_edit(path)
+        ]
+        if not evidence["allowed_edit_paths"]:
+            raise NeedsUser("Planning has no approved, observed source to edit")
         evidence["baseline_diagnostic"] = diagnostic(baseline)
         evidence["required_check_names"] = [c.name for c in self.project.checks]
         if any(evidence["files"][f.path]["sha256"] != f.sha256 for f in findings.findings):
@@ -169,6 +184,10 @@ class Coordinator:
                 raise ValueError("Plan must preserve all configured named checks")
 
         schema = Plan.model_json_schema()
+        schema["properties"]["paths"]["items"] = {
+            "type": "string",
+            "enum": evidence["allowed_edit_paths"],
+        }
         schema["properties"]["checks"]["items"] = {
             "type": "string",
             "enum": evidence["required_check_names"],

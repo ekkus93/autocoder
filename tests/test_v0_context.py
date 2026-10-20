@@ -1,19 +1,21 @@
 import asyncio
 import json
 
+import pytest
+
 from autocoder.fixtures import Fixture
 from autocoder.v0.cli import journal_for
 from autocoder.v0.coordinator import Coordinator
 from autocoder.v0.gateway import ToolGateway
-from autocoder.v0.schema import Check, Phase, Project
+from autocoder.v0.schema import Check, Orientation, Phase, Project
 
 
-def coordinator_for(repository, temporary, transport):
+def coordinator_for(repository, temporary, transport, *, edit_helper=False):
     project = Project(
         repository=repository,
         state_dir=temporary / "state",
         readable_paths=["source.py", "helper.py"],
-        editable_paths=["source.py"],
+        editable_paths=["source.py", "helper.py"] if edit_helper else ["source.py"],
         checks=[Check(name="unit", command=["/usr/bin/true"])],
         context=16384,
     )
@@ -148,3 +150,50 @@ def test_qualified_method_focus_survives_unrelated_orientation_reads(tmp_path):
         controller = coordinator_for(fixture.repository, tmp_path, transport)
         artifact = asyncio.run(controller.orient("Fix Client.consume, then run all checks."))
         assert artifact.findings[0].start == 2
+
+
+@pytest.mark.parametrize("observed_companion", [True, False])
+def test_plan_companion_paths_require_actual_prior_source_observation(tmp_path, observed_companion):
+    with Fixture({"source.py": "VALUE = 1\n", "helper.py": "OTHER = 2\n"}) as fixture:
+
+        async def transport(endpoint, model, messages, budget, **options):
+            evidence = json.loads(messages[1]["content"])["evidence"]
+            allowed = {"source.py", "helper.py"} if observed_companion else {"source.py"}
+            assert set(options["schema"]["properties"]["paths"]["items"]["enum"]) == allowed
+            return answer(
+                {
+                    "content": json.dumps(
+                        {
+                            "base_sha": evidence["base_sha"],
+                            "paths": ["source.py", "helper.py"],
+                            "steps": ["Fix source and add companion coverage"],
+                            "checks": ["unit"],
+                        }
+                    )
+                }
+            )
+
+        controller = coordinator_for(fixture.repository, tmp_path, transport, edit_helper=True)
+        evidence = controller.gateway.evidence(None if observed_companion else ["source.py"])
+        frame = evidence["files"]["source.py"]
+        findings = Orientation.model_validate(
+            {
+                "base_sha": evidence["base_sha"],
+                "findings": [
+                    {
+                        "path": "source.py",
+                        "sha256": frame["sha256"],
+                        "start": 1,
+                        "end": 1,
+                        "summary": "Source needs a fix",
+                    }
+                ],
+            }
+        )
+        controller.transition(Phase.REPRODUCE_AND_PLAN)
+        if observed_companion:
+            plan = asyncio.run(controller.plan("Fix source with companion tests", findings, []))
+            assert plan.paths == ["source.py", "helper.py"]
+        else:
+            with pytest.raises(ValueError, match="Invalid phase artifact"):
+                asyncio.run(controller.plan("Fix source with companion tests", findings, []))
