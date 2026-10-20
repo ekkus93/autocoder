@@ -660,3 +660,37 @@ def test_repair_reuses_last_observed_range_with_current_source_and_planned_scope
             )
         )
         assert calls == 5
+
+
+def test_focused_method_context_includes_bounded_constructor_and_setup_without_imports(tmp_path):
+    source = (
+        'raise RuntimeError("must never import source")\n'
+        "class Client:\n"
+        "    def __init__(self, config):\n"
+        "        self.config = config\n"
+        "        self.prompt = None\n"
+        "    def ask(self, kind, label):\n"
+        "        self.prompt = kind\n"
+        "    def consume(self, row):\n"
+        "        return row\n"
+        "class Unrelated:\n"
+        "    def __init__(self, private_config):\n"
+        "        self.value = private_config\n"
+    )
+    with Fixture({"source.py": source, "helper.py": "VALUE = 1\n"}) as fixture:
+        controller = coordinator_for(fixture.repository, tmp_path, None)
+        evidence = controller.gateway.evidence(["source.py"], request="Fix Client.consume")
+        frame = evidence["files"]["source.py"]
+        interface = frame["class_interface"]
+        assert "def __init__(self, config)" in interface["source"]
+        assert "self.prompt = None" in interface["source"]
+        assert "def ask(self, kind, label)" in interface["source"]
+        assert "self.prompt = kind" in interface["source"]
+        assert "private_config" not in interface["source"]
+        assert len(interface["source"]) <= 1200
+        assert len(frame["source"]) + len(interface["source"]) <= 3000
+        assert "def consume" in frame["source"]
+        controller.gateway.read("source.py", 1, 1)
+        refreshed = controller.gateway.evidence(["helper.py"], request="Fix Client.consume")
+        assert "source.py" not in refreshed["files"]
+        assert "class_interface" not in refreshed["files"]["helper.py"]

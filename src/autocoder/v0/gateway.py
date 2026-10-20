@@ -119,12 +119,22 @@ class ToolGateway:
                             name, node.lineno, min(node.end_lineno, node.lineno + 119)
                         )
                         files[name]["truncated"] |= node.end_lineno > node.lineno + 119
+                        owner = parents.get(node)
+                        if isinstance(owner, ast.ClassDef):
+                            files[name]["class_interface"] = self.class_interface(owner, data)
                         focused.add(name)
         # Register only snippets actually sent, not earlier internal full-file prefixes.
         self.reads = {name: [] for name in files}
         for entry in files.values():
-            entry["truncated"] |= len(entry["source"]) > limit
-            entry["source"] = entry["source"][:limit]
+            if "class_interface" in entry:
+                interface = entry["class_interface"]
+                interface_limit = min(1200, limit // 3)
+                interface["truncated"] |= len(interface["source"]) > interface_limit
+                interface["source"] = interface["source"][:interface_limit]
+            interface_size = len(entry.get("class_interface", {}).get("source", ""))
+            source_limit = limit - interface_size
+            entry["truncated"] |= len(entry["source"]) > source_limit
+            entry["source"] = entry["source"][:source_limit]
             entry["end"] = entry["start"] + max(1, len(entry["source"].splitlines())) - 1
             self.reads[entry["path"]].append((entry["start"], entry["end"], entry["sha256"]))
             entry["focused_symbol"] = entry["path"] in focused
@@ -132,6 +142,34 @@ class ToolGateway:
             "base_sha": self.workspace.base_sha,
             "files": files,
             "available_paths": self.project.readable_paths,
+        }
+
+    @staticmethod
+    def class_interface(owner, data):
+        """Observed constructor/setup source and signatures, without importing candidate code."""
+        lines = data.decode("utf-8").splitlines()
+        methods = [
+            node for node in owner.body if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+        ]
+        constructor = [node for node in methods if node.name == "__init__"]
+        public = [node for node in methods if not node.name.startswith("_")]
+        snippets = []
+        truncated = len(constructor + public) > 16
+        for node in (constructor + public)[:16]:
+            prefix = "async def" if isinstance(node, ast.AsyncFunctionDef) else "def"
+            arguments = ast.unparse(node.args)
+            truncated |= len(arguments) > 256
+            signature = f"L{node.lineno}: {prefix} {node.name}({arguments[:256]}):"
+            if node.name == "__init__" or node.end_lineno - node.lineno < 8:
+                body = lines[node.lineno : min(node.end_lineno, node.lineno + 14)]
+                signature += "\n" + "\n".join(body)
+                truncated |= node.end_lineno > node.lineno + 14
+            snippets.append(signature)
+        text = "\n".join(snippets)
+        return {
+            "class": owner.name,
+            "source": text[:1200],
+            "truncated": truncated or len(text) > 1200,
         }
 
     def search(self, pattern, path):
