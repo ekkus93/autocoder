@@ -1,7 +1,7 @@
 # Local AI Coder — Implementation TODO
 
 **Status:** v0 and terminal UI verified; hosted push/PR CI passes with release-only artifacts
-**Date:** 2026-10-20
+**Date:** 2026-10-21
 **Authority:** [`SPEC.md`](SPEC.md)  
 **Primary goal:** Build a local-first autonomous coding system that makes small LLMs substantially more useful by improving context management, code retrieval, tool execution, and verification.
 
@@ -11,7 +11,7 @@
 
 The owner approved the custom v0. The persistent task CLI, bounded fresh phases,
 scoped tools, confined navigation/checks, durable intent/outcome recovery and
-controlled dependency preparation are implemented. The full suite now passes 101 tests (67 at the v0 evidence checkpoint).
+controlled dependency preparation are implemented. The full suite now passes 104 tests (67 at the v0 evidence checkpoint).
 Two repository policy repairs and two native Python/Rust project processes have
 verified local outcomes; original checkouts were preserved during successful runs.
 
@@ -66,6 +66,12 @@ follow-up used the same model/budgets plus a qualified public coverage gate, but
 covered only 10/13 faults, introduced a nonempty-range regression and ended on a
 truncated replan response. It remains failed and unmerged. See the
 [contract/checklist loop checkpoint](evidence/CONTRACT_CHECKLIST_LOOP_2026-10-20.md).
+The interrupted-session audit found v3 had already terminated. Discovery-reply
+recovery now uses a validated handoff; style-only failures stay in focused repair.
+The controller passes 104 tests. V4 passed behavior and all 13 coverage faults but
+failed on two overlong comments and exhausted input during a replan. A same-policy
+v5 rerun exhausted input before adding its regression test. Both remain failed.
+Details are in the [handoff/repair checkpoint](evidence/ORIENT_HANDOFF_2026-10-21.md).
 These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist
