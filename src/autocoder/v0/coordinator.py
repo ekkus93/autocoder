@@ -513,7 +513,11 @@ class Coordinator:
                 stalled = current_diagnostic == previous_diagnostic
                 previous_diagnostic = current_diagnostic
                 replans = [r for r in self.journal.read() if r["kind"] in {"RESUME", "REPLAN"}]
-                if public_failures >= 2 and stalled and not replans:
+                semantic_failure = any(
+                    check.kind not in {"lint", "format"} and not passed([record])
+                    for check, record in zip(self.project.checks, checks, strict=True)
+                )
+                if public_failures >= 2 and stalled and semantic_failure and not replans:
                     self.journal.emit("REPLAN", data={"count": 1})
                     self.transition(Phase.ORIENT)
                     revised_request = (

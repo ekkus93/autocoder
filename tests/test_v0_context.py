@@ -964,3 +964,77 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_pat
         rows = controller.journal.read()
         assert len([r for r in rows if r["kind"] == "TOOL_CALL"]) == 1
         assert len([r for r in rows if r["kind"] == "INCOMPLETE_RESPONSE"]) == 1
+
+
+def test_style_only_failures_stay_in_focused_repair(tmp_path):
+    from test_v0 import FIXED, SOURCE, fake_model, project_for
+
+    from autocoder.v0.cli import start
+
+    long_comment = "# " + "x" * 110
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        lint = Check(
+            name="style",
+            kind="lint",
+            command=[
+                "/usr/bin/python3",
+                "-I",
+                "-c",
+                "from pathlib import Path; "
+                "lines = Path('/work/greeting.py').read_text().splitlines(); "
+                "assert all(len(line)<=100 for line in lines), 'style regression'",
+            ],
+        )
+        project = project.model_copy(update={"checks": [*project.checks, lint]})
+        base = fake_model([])
+        repair_attempts = 0
+        implementation_started = False
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal repair_attempts, implementation_started
+            body = json.loads(messages[1]["content"])
+            if body["phase"] in {"IMPLEMENT", "REPAIR"}:
+                if any(m["role"] == "tool" for m in messages):
+                    return answer({"content": "verify"})
+                frame = body["evidence"]["files"]["greeting.py"]
+                if body["phase"] == "IMPLEMENT":
+                    implementation_started = True
+                    old, new = frame["source"], (FIXED + long_comment).rstrip("\n")
+                else:
+                    repair_attempts += 1
+                    if repair_attempts == 1:
+                        return answer({"content": "verify"})
+                    old, new = long_comment, "# concise"
+                return answer(
+                    {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "apply_edit",
+                                    "arguments": {
+                                        "path": "greeting.py",
+                                        "old": old,
+                                        "new": new,
+                                        "expected_sha256": frame["sha256"],
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                )
+            assert not implementation_started, "Style failures must not restart orientation"
+            response = await base(endpoint, model, messages, budget, **options)
+            if body["phase"] == "REPRODUCE_AND_PLAN":
+                plan = json.loads(response["message"]["content"])
+                plan["checks"] = ["greeting", "style"]
+                response["message"]["content"] = json.dumps(plan)
+            return response
+
+        result = start(project, "Fix greet", transport=transport, metadata=False)
+        assert result["status"] == "VERIFIED_LOCAL", result
+        assert result["usage"]["repairs"] == 2
+        assert repair_attempts == 2
+        assert not any(
+            r["kind"] == "REPLAN" for r in journal_for(project, result["task_id"]).read()
+        )
