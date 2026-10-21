@@ -226,13 +226,11 @@ def fake_model(seen, *, malicious=False):
         evidence = body["evidence"]
         phase = body["phase"]
         if phase == "ORIENT":
-            source = evidence["files"]["greeting.py"]
             value = {
                 "base_sha": evidence["base_sha"],
                 "findings": [
                     {
                         "path": "greeting.py",
-                        "sha256": source["sha256"],
                         "start": 1,
                         "end": 2,
                         "summary": "greet ignores its argument",

@@ -13,7 +13,15 @@ from autocoder.v0.gateway import RepeatedObservation, ToolGateway
 from autocoder.v0.journal import NeedsUser
 from autocoder.v0.model import ContextBuilder, IncompleteResponse, ModelBackend, TaskBudget
 from autocoder.v0.navigation import Navigation
-from autocoder.v0.schema import TRANSITIONS, Orientation, Outcome, Phase, Plan
+from autocoder.v0.schema import (
+    TRANSITIONS,
+    Finding,
+    ModelOrientation,
+    Orientation,
+    Outcome,
+    Phase,
+    Plan,
+)
 from autocoder.v0.verification import VerificationRunner, diagnostic, passed
 from autocoder.v0.workspace import Workspace, git
 
@@ -71,7 +79,15 @@ class Coordinator:
             self.gateway.enter(target)
 
     async def structured(
-        self, schema, request, evidence, *, handoff=None, validate=None, schema_override=None
+        self,
+        schema,
+        request,
+        evidence,
+        *,
+        handoff=None,
+        validate=None,
+        finalize=None,
+        schema_override=None,
     ):
         error = None
         for attempt in range(2):
@@ -83,8 +99,11 @@ class Coordinator:
                 value = schema.model_validate_json(message.get("content", ""))
                 if validate:
                     validate(value)
+                if finalize:
+                    # Fields the coordinator can compute are never copied by the model.
+                    value = finalize(value)
                 ref = self.journal.artifact(value.model_dump(mode="json"))
-                self.journal.emit("HANDOFF", evidence_ref=ref, data={"type": schema.__name__})
+                self.journal.emit("HANDOFF", evidence_ref=ref, data={"type": type(value).__name__})
                 return value
             except ValueError as failure:
                 if attempt:
@@ -180,20 +199,34 @@ class Coordinator:
         def validate(value):
             if value.base_sha != self.workspace.base_sha:
                 raise ValueError("Orientation cites stale base revision")
+
+        def finalize(value):
+            # The coordinator, not the model, supplies each file digest. A finding must lie
+            # inside a range that was actually read at the file's current digest.
+            findings = []
             for finding in value.findings:
                 actual = evidence["files"].get(finding.path)
+                reads = self.gateway.reads.get(finding.path, [])
                 if (
                     not actual
-                    or finding.sha256 != actual["sha256"]
                     or finding.end < finding.start
                     or not any(
-                        start <= finding.start <= finding.end <= end and sha == finding.sha256
-                        for start, end, sha in self.gateway.reads.get(finding.path, [])
+                        start <= finding.start <= finding.end <= end and sha == actual["sha256"]
+                        for start, end, sha in reads
                     )
                 ):
-                    raise ValueError("Orientation is not anchored to current source")
+                    observed = ", ".join(f"{start}-{end}" for start, end, _ in reads[-4:])
+                    raise ValueError(
+                        "Orientation is not anchored to current source: "
+                        f"{finding.path} lines {finding.start}-{finding.end}; "
+                        f"observed lines {observed or 'none'}"
+                    )
+                findings.append(Finding(**finding.model_dump(), sha256=actual["sha256"]))
+            return Orientation(base_sha=value.base_sha, findings=findings)
 
-        return await self.structured(Orientation, task, evidence, validate=validate)
+        return await self.structured(
+            ModelOrientation, task, evidence, validate=validate, finalize=finalize
+        )
 
     async def plan(self, task, findings, baseline):
         self.workspace.assert_expected()

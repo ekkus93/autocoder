@@ -243,6 +243,20 @@ class Finding(Strict):
     summary: str = Field(max_length=500)
 
 
+class ModelFinding(Strict):
+    """A finding as the model states it; the coordinator attaches the verified digest."""
+
+    path: str
+    start: int = Field(ge=1)
+    end: int = Field(ge=1)
+    summary: str = Field(max_length=500)
+
+
+class ModelOrientation(Strict):
+    base_sha: str = Field(pattern=r"^[a-f0-9]{40}$")
+    findings: list[ModelFinding] = Field(min_length=1, max_length=12)
+
+
 class Orientation(Strict):
     base_sha: str = Field(pattern=r"^[a-f0-9]{40}$")
     findings: list[Finding] = Field(min_length=1, max_length=12)

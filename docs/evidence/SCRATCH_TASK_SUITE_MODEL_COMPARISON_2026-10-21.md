@@ -118,10 +118,10 @@ failure and not a harness one.
 
 ## Possible follow-ups (not verified against the code)
 
-1. Have the coordinator supply each finding's `sha256` instead of asking the model to
-   copy it, and keep the anchoring check on path and line range.
-2. Re-run the two ORIENT failures after that change to see how the models do on the
-   editing phase itself.
+1. Done: the coordinator now supplies each finding's `sha256` instead of asking the model
+   to copy it, and keeps the anchoring check on path and line range (see the follow-up
+   section below).
+2. Done: both ORIENT failures were re-run after that change (see below).
 3. Add a distinct status for the no-progress and handoff-validation stops. The earlier
    report also noted `BUDGET_EXHAUSTED` is misleading for the duplicate-operation stop.
 4. Done: the task generator is now under version control as
@@ -129,3 +129,30 @@ failure and not a harness one.
 
 Relevant TODO item: P8-06 (alternate models) is the closest. These results do not close
 it.
+
+## Follow-up: coordinator-supplied digests (harness change)
+
+Orientation findings are now emitted by the model as `path`, `start`, `end` and
+`summary` only (`ModelOrientation` in `src/autocoder/v0/schema.py`). The coordinator
+attaches each file's SHA-256 from the file it observed and rejects a finding whose line
+range was not read at that file's current digest. The rejection message now names the
+path, the cited range and the ranges that were observed, which gives the repair attempt
+something to act on. The validated `Orientation` artifact, the plan's staleness check and
+the journal are unchanged apart from the recorded handoff type name.
+
+The two ORIENT failures were re-run with the same models and tasks (one run each):
+
+| Task | Model | Status | Tool calls | Time |
+| --- | --- | --- | --- | --- |
+| `calc` | `qwen3.5:9b` | `VERIFIED_LOCAL`, both files fixed | 6 | 31 s |
+| `report` | `devstral-small-2:24b` | `VERIFIED_LOCAL`, both files fixed | 4 | 104 s |
+
+Both diffs were correct and limited to the bugs. `qwen3.5:9b`'s tokenizer pattern also
+accepts forms such as `3.` and `.5`, which is broader than necessary but harmless here.
+Updated pass counts over the five distinct tasks: `qwen3.5:9b` 4 of 5 (still missing the
+`shop` task), `devstral-small-2:24b` 4 of 5 (still missing `calc`). This is still one
+run per cell on small throwaway tasks, so it shows the handoff no longer blocks these
+runs and nothing more. The test suite (106 tests) passes. The unit test that used a bad
+hash to prove stale-handoff rejection now cites a line range that was never read.
+`Plan.base_sha` is still copied by the model and has the same kind of transcription risk,
+though no run has failed on it.

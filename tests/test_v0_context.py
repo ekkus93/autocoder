@@ -104,7 +104,6 @@ def test_orientation_hands_off_before_native_tool_history_exceeds_context(tmp_pa
                             "findings": [
                                 {
                                     "path": "source.py",
-                                    "sha256": frame["sha256"],
                                     "start": 80,
                                     "end": 81,
                                     "summary": "Relevant current source",
@@ -168,7 +167,6 @@ def test_qualified_method_focus_survives_unrelated_orientation_reads(tmp_path):
                             "findings": [
                                 {
                                     "path": "source.py",
-                                    "sha256": frame["sha256"],
                                     "start": 2,
                                     "end": 3,
                                     "summary": "Missing phase update",
@@ -294,7 +292,6 @@ def test_repeated_orientation_read_transitions_to_a_validated_handoff(tmp_path):
                     }
                 )
             evidence = json.loads(messages[1]["content"])["evidence"]
-            frame = evidence["files"]["source.py"]
             return answer(
                 {
                     "content": json.dumps(
@@ -303,7 +300,6 @@ def test_repeated_orientation_read_transitions_to_a_validated_handoff(tmp_path):
                             "findings": [
                                 {
                                     "path": "source.py",
-                                    "sha256": frame["sha256"],
                                     "start": 80,
                                     "end": 81,
                                     "summary": "Current observed source",
@@ -897,8 +893,12 @@ def test_changed_public_failure_gets_focused_repair_before_replan(tmp_path):
         assert not any(r["kind"] == "REPLAN" for r in journal.read())
 
 
-@pytest.mark.parametrize("stale_handoff", [False, True])
-def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_path, stale_handoff):
+@pytest.mark.parametrize("unobserved_range", [False, True])
+def test_truncated_discovery_discards_calls_and_builds_validated_handoff(
+    tmp_path, unobserved_range
+):
+    from autocoder.protocol import digest
+
     source = "".join(f"# line {i}\n" for i in range(160))
     with Fixture({"source.py": source, "helper.py": source}) as fixture:
         discovery_calls = 0
@@ -943,9 +943,8 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_pat
                             "findings": [
                                 {
                                     "path": "source.py",
-                                    "sha256": "0" * 64 if stale_handoff else frame["sha256"],
-                                    "start": 140,
-                                    "end": 141,
+                                    "start": 150 if unobserved_range else 140,
+                                    "end": 151 if unobserved_range else 141,
                                     "summary": "Observed source",
                                 }
                             ],
@@ -955,12 +954,14 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_pat
             )
 
         controller = coordinator_for(fixture.repository, tmp_path, transport)
-        if stale_handoff:
+        if unobserved_range:
             with pytest.raises(ValueError, match="Invalid phase artifact"):
                 asyncio.run(controller.orient("Locate the defect"))
         else:
             findings = asyncio.run(controller.orient("Locate the defect"))
             assert findings.findings[0].start == 140
+            # The coordinator supplies the digest from the file it observed.
+            assert findings.findings[0].sha256 == digest(source.encode())
         rows = controller.journal.read()
         assert len([r for r in rows if r["kind"] == "TOOL_CALL"]) == 1
         assert len([r for r in rows if r["kind"] == "INCOMPLETE_RESPONSE"]) == 1
