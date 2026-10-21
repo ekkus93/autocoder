@@ -955,6 +955,7 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_pat
                 asyncio.run(controller.orient("Locate the defect"))
             # The single repair attempt is told the real line count and the shown ranges.
             assert diagnostics[0] is None and len(diagnostics) == 2
+            assert "repeat every other finding unchanged" in diagnostics[1]
             if citation == "unread_range":
                 for expected in ("source.py lines 150-151", "the file has 160 lines", "140-141"):
                     assert expected in diagnostics[1], diagnostics[1]

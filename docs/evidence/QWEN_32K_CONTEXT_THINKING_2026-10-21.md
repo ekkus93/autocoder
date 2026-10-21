@@ -157,3 +157,31 @@ So the message gets the model to use a correct range in one of two cases, and ne
 passed. One run each is a small sample, but the `shop` result suggests the repair should also
 tell the model to keep the findings that were already valid. That is a prompt change I have not
 made or tested.
+
+### Second repair wording: keep the valid findings
+
+The repair message now also says "Correct only these findings and repeat every other finding
+unchanged." The same two cells were re-run once more (ignored directory
+`tmp/qwen-32k-keep-valid-check-2026-10-21/`):
+
+| Task | Result |
+| --- | --- |
+| `paginate` | `FAILED_VERIFICATION` in ORIENT (7.7 s). The repair kept citing lines 13-16 of the 12-line file and moved its other finding to 4-5. |
+| `shop` | `VERIFIED_LOCAL` (29.1 s, 7 tool calls, 1 repair). |
+
+For `shop`, the repair response contained all three findings, with `money.py` corrected to lines
+5-6, and the task completed. This cannot be credited to the new wording. The model's first
+response in this run contained only the `money.py` finding, while the earlier runs of the same
+cell, with identical settings (temperature 0, seed 42), began with three findings. The server
+is evidently not fully deterministic across runs, so each of these single-run results is noisy.
+With only one finding to correct, "repeat every other finding" had nothing to keep, yet the
+model still added the other two.
+
+The passing `shop` candidate has a latent defect that the regression script does not
+catch. It replaced truncation in `pricing.py` with `round(cents * percent / 100)`. Python's
+`round` rounds halves to even, so a discount of exactly 2.5 cents becomes 2, not the 3 that
+"round half up" requires, and the float division can also misround. The script's cases happen
+to pass. This is another reminder that `VERIFIED_LOCAL` only means the configured checks passed.
+
+Net effect after both message changes: `paginate` is unchanged (the model ignores the stated
+line count) and `shop` flipped between runs. These runs do not show a reliable improvement.

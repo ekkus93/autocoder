@@ -224,8 +224,9 @@ class Coordinator:
             problems = list(dict.fromkeys(filter(None, map(anchoring_problem, value.findings))))
             if problems:
                 raise ValueError(
-                    "Orientation is not anchored to current source. Cite only lines you were "
-                    "shown: " + "; ".join(problems[:6])
+                    "Orientation is not anchored to current source. Correct only these findings "
+                    "and repeat every other finding unchanged. Cite only lines you were shown: "
+                    + "; ".join(problems[:6])
                 )
             findings = [
                 Finding(**finding.model_dump(), sha256=evidence["files"][finding.path]["sha256"])
