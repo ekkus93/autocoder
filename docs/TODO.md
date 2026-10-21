@@ -61,6 +61,11 @@ the [test-setup repair checkpoint](evidence/TEST_SETUP_REPAIR_2026-10-20.md).
 The rerun exercised baseline examples and early checks, but exhausted three repairs
 with behavior and fixture-setup failures. It remains failed and unmerged; the
 reviewed main-branch fix is unchanged.
+A focused contract/checklist evaluation produced 13/13 fault coverage. Its full-loop
+follow-up used the same model/budgets plus a qualified public coverage gate, but
+covered only 10/13 faults, introduced a nonempty-range regression and ended on a
+truncated replan response. It remains failed and unmerged. See the
+[contract/checklist loop checkpoint](evidence/CONTRACT_CHECKLIST_LOOP_2026-10-20.md).
 These exploratory trials do not revise frozen Stage 0 registrations.
 
 ## How to use this checklist
