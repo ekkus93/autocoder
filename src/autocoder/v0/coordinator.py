@@ -17,6 +17,7 @@ from autocoder.v0.schema import (
     TRANSITIONS,
     Finding,
     ModelOrientation,
+    ModelPlan,
     Orientation,
     Outcome,
     Phase,
@@ -196,13 +197,10 @@ class Coordinator:
                 if stop_discovery:
                     break
 
-        def validate(value):
-            if value.base_sha != self.workspace.base_sha:
-                raise ValueError("Orientation cites stale base revision")
-
         def finalize(value):
-            # The coordinator, not the model, supplies each file digest. A finding must lie
-            # inside a range that was actually read at the file's current digest.
+            # The coordinator, not the model, supplies the base revision and each file digest.
+            # A finding must lie inside a range that was actually read at the file's
+            # current digest.
             findings = []
             for finding in value.findings:
                 actual = evidence["files"].get(finding.path)
@@ -222,11 +220,9 @@ class Coordinator:
                         f"observed lines {observed or 'none'}"
                     )
                 findings.append(Finding(**finding.model_dump(), sha256=actual["sha256"]))
-            return Orientation(base_sha=value.base_sha, findings=findings)
+            return Orientation(base_sha=self.workspace.base_sha, findings=findings)
 
-        return await self.structured(
-            ModelOrientation, task, evidence, validate=validate, finalize=finalize
-        )
+        return await self.structured(ModelOrientation, task, evidence, finalize=finalize)
 
     async def plan(self, task, findings, baseline):
         self.workspace.assert_expected()
@@ -258,8 +254,6 @@ class Coordinator:
             raise NeedsUser("Orientation became stale before planning")
 
         def validate(plan):
-            if plan.base_sha != self.workspace.base_sha:
-                raise ValueError("Plan cites a stale revision")
             if len(plan.paths) != len(set(plan.paths)) or len(plan.checks) != len(set(plan.checks)):
                 raise ValueError("Plan paths and check names must be unique")
             if not set(plan.paths) <= set(evidence["files"]) or not all(
@@ -270,7 +264,7 @@ class Coordinator:
             if set(plan.checks) != {c.name for c in self.project.checks}:
                 raise ValueError("Plan must preserve all configured named checks")
 
-        schema = Plan.model_json_schema()
+        schema = ModelPlan.model_json_schema()
         schema["properties"]["paths"]["items"] = {
             "type": "string",
             "enum": evidence["allowed_edit_paths"],
@@ -283,11 +277,12 @@ class Coordinator:
             minItems=len(self.project.checks), maxItems=len(self.project.checks)
         )
         return await self.structured(
-            Plan,
+            ModelPlan,
             task,
             evidence,
             handoff=findings.model_dump(),
             validate=validate,
+            finalize=lambda plan: Plan(base_sha=self.workspace.base_sha, **plan.model_dump()),
             schema_override=schema,
         )
 

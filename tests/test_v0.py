@@ -227,7 +227,6 @@ def fake_model(seen, *, malicious=False):
         phase = body["phase"]
         if phase == "ORIENT":
             value = {
-                "base_sha": evidence["base_sha"],
                 "findings": [
                     {
                         "path": "greeting.py",
@@ -240,7 +239,6 @@ def fake_model(seen, *, malicious=False):
             message = {"content": json.dumps(value)}
         elif phase == "REPRODUCE_AND_PLAN":
             value = {
-                "base_sha": evidence["base_sha"],
                 "paths": ["greeting.py"],
                 "steps": ["Include the name"],
                 "checks": ["greeting"],
@@ -735,3 +733,21 @@ def test_checkpoint_overrun_cannot_be_reported_as_verified(tmp_path, monkeypatch
         assert result["status"] == "BUDGET_EXHAUSTED", result
         assert result["task_commit"] != result["base_sha"]
         assert (fixture.repository / "greeting.py").read_text() == SOURCE
+
+
+def test_model_handoffs_omit_fields_the_coordinator_supplies():
+    from autocoder.v0.schema import ModelOrientation, ModelPlan, Plan
+
+    finding = {"path": "module.py", "start": 1, "end": 2, "summary": "source"}
+    plan = {"paths": ["module.py"], "steps": ["Fix it"], "checks": ["unit"]}
+    ModelOrientation.model_validate_json(json.dumps({"findings": [finding]}))
+    ModelPlan.model_validate_json(json.dumps(plan))
+    with pytest.raises(ValueError):
+        ModelOrientation.model_validate_json(
+            json.dumps({"base_sha": "a" * 40, "findings": [finding]})
+        )
+    with pytest.raises(ValueError):
+        ModelPlan.model_validate_json(json.dumps({"base_sha": "a" * 40, **plan}))
+    assert Plan(base_sha="a" * 40, **plan).base_sha == "a" * 40
+    assert "base_sha" not in ModelPlan.model_json_schema()["properties"]
+    assert "base_sha" not in ModelOrientation.model_json_schema()["properties"]

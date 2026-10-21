@@ -253,7 +253,8 @@ class ModelFinding(Strict):
 
 
 class ModelOrientation(Strict):
-    base_sha: str = Field(pattern=r"^[a-f0-9]{40}$")
+    """Model-stated orientation; the coordinator supplies the base revision and digests."""
+
     findings: list[ModelFinding] = Field(min_length=1, max_length=12)
 
 
@@ -262,8 +263,13 @@ class Orientation(Strict):
     findings: list[Finding] = Field(min_length=1, max_length=12)
 
 
-class Plan(Strict):
-    base_sha: str = Field(pattern=r"^[a-f0-9]{40}$")
+class ModelPlan(Strict):
+    """Model-stated plan; the coordinator supplies the base revision."""
+
     paths: list[str] = Field(min_length=1, max_length=8)
     steps: list[str] = Field(min_length=1, max_length=5)
     checks: list[str] = Field(min_length=1, max_length=12)
+
+
+class Plan(ModelPlan):
+    base_sha: str = Field(pattern=r"^[a-f0-9]{40}$")

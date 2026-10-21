@@ -100,7 +100,6 @@ def test_orientation_hands_off_before_native_tool_history_exceeds_context(tmp_pa
                 {
                     "content": json.dumps(
                         {
-                            "base_sha": evidence["base_sha"],
                             "findings": [
                                 {
                                     "path": "source.py",
@@ -116,6 +115,7 @@ def test_orientation_hands_off_before_native_tool_history_exceeds_context(tmp_pa
 
         controller = coordinator_for(fixture.repository, tmp_path, transport)
         artifact = asyncio.run(controller.orient("Locate the source defect"))
+        assert artifact.base_sha == controller.workspace.base_sha
         assert artifact.findings[0].start == 80
         assert calls == [True, False]
         resets = [row for row in controller.journal.read() if row["kind"] == "CONTEXT_RESET"]
@@ -163,7 +163,6 @@ def test_qualified_method_focus_survives_unrelated_orientation_reads(tmp_path):
                 {
                     "content": json.dumps(
                         {
-                            "base_sha": evidence["base_sha"],
                             "findings": [
                                 {
                                     "path": "source.py",
@@ -187,14 +186,12 @@ def test_plan_companion_paths_require_actual_prior_source_observation(tmp_path, 
     with Fixture({"source.py": "VALUE = 1\n", "helper.py": "OTHER = 2\n"}) as fixture:
 
         async def transport(endpoint, model, messages, budget, **options):
-            evidence = json.loads(messages[1]["content"])["evidence"]
             allowed = {"source.py", "helper.py"} if observed_companion else {"source.py"}
             assert set(options["schema"]["properties"]["paths"]["items"]["enum"]) == allowed
             return answer(
                 {
                     "content": json.dumps(
                         {
-                            "base_sha": evidence["base_sha"],
                             "paths": ["source.py", "helper.py"],
                             "steps": ["Fix source and add companion coverage"],
                             "checks": ["unit"],
@@ -291,12 +288,10 @@ def test_repeated_orientation_read_transitions_to_a_validated_handoff(tmp_path):
                         ]
                     }
                 )
-            evidence = json.loads(messages[1]["content"])["evidence"]
             return answer(
                 {
                     "content": json.dumps(
                         {
-                            "base_sha": evidence["base_sha"],
                             "findings": [
                                 {
                                     "path": "source.py",
@@ -939,7 +934,6 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(
                 {
                     "content": json.dumps(
                         {
-                            "base_sha": evidence["base_sha"],
                             "findings": [
                                 {
                                     "path": "source.py",

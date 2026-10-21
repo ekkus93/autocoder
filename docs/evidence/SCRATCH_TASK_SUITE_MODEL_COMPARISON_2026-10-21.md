@@ -154,5 +154,18 @@ Updated pass counts over the five distinct tasks: `qwen3.5:9b` 4 of 5 (still mis
 run per cell on small throwaway tasks, so it shows the handoff no longer blocks these
 runs and nothing more. The test suite (106 tests) passes. The unit test that used a bad
 hash to prove stale-handoff rejection now cites a line range that was never read.
-`Plan.base_sha` is still copied by the model and has the same kind of transcription risk,
-though no run has failed on it.
+
+### Second step: base revision
+
+The `base_sha` field had the same transcription risk in both handoffs, although no run
+had failed on it. `ModelOrientation` and the new `ModelPlan` no longer contain it. The
+coordinator now builds `Orientation` and `Plan` with its own base revision, so the old
+"cites a stale revision" checks are gone because there is nothing left to cite wrongly.
+`Plan` now extends `ModelPlan` with the coordinator-supplied field. A new unit test checks
+that a model-supplied `base_sha` is rejected and absent from both JSON schemas. The
+suite now has 107 tests.
+
+Spot re-runs after this change, one run each: `paginate` and `report` with
+`qwen3.5:9b` and `intervals` with `devstral-small-2:24b` all finished `VERIFIED_LOCAL`
+(2, 6 and 1 tool calls). This is a regression check on the handoff change, not a new
+measurement.
