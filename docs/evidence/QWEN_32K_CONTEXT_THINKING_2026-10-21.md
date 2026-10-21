@@ -129,3 +129,31 @@ behavior of a full window. Artifacts are in the ignored directory
 2. Repeat on more and harder tasks, and add a task that really fills a large window.
 3. If thinking or a larger context is adopted, expose it as an explicit project setting
    with budget checks and tests, as the handoff suggests.
+
+## Follow-up: line counts in the orientation repair (harness change)
+
+The orientation repair message now lists every unanchored finding with the file's real line
+count and the ranges that were shown, for example `src/pager.py lines 13-16: the file has 12
+lines; lines shown to you: 1-12`. An unknown file is reported with the observed file names.
+The anchoring rule is unchanged, and a unit test (108 tests now pass) checks the message for a
+range that was never read and for an unobserved file.
+
+The two non-thinking ORIENT failures were re-run with `qwen35-32k:latest` (same settings,
+one run each, in the ignored directory `tmp/qwen-32k-repair-check-2026-10-21/`):
+
+| Task | Before | After |
+| --- | --- | --- |
+| `paginate` | `FAILED_VERIFICATION` in ORIENT | `FAILED_VERIFICATION` in ORIENT (11.6 s) |
+| `shop` | `FAILED_VERIFICATION` in ORIENT | Passed ORIENT, then `BUDGET_EXHAUSTED` in IMPLEMENT with "duplicate tool operation without source progress" (25.8 s, 6 tool calls) |
+
+- `paginate`: the repair request carried the message above, but the model's second response
+  again cited lines 13-16 of the 12-line file and also changed its first finding to 4-5.
+- `shop`: the message flagged only `money.py` lines 10-12 (the file has 7 lines). The model
+  corrected that finding to lines 6-7 but dropped the other two findings, which had been valid.
+  Planning then covered only `money.py`, and the task stalled without fixing `pricing.py`
+  or `cart.py`.
+
+So the message gets the model to use a correct range in one of two cases, and neither task
+passed. One run each is a small sample, but the `shop` result suggests the repair should also
+tell the model to keep the findings that were already valid. That is a prompt change I have not
+made or tested.

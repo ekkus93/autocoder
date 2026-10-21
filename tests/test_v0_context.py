@@ -888,15 +888,14 @@ def test_changed_public_failure_gets_focused_repair_before_replan(tmp_path):
         assert not any(r["kind"] == "REPLAN" for r in journal.read())
 
 
-@pytest.mark.parametrize("unobserved_range", [False, True])
-def test_truncated_discovery_discards_calls_and_builds_validated_handoff(
-    tmp_path, unobserved_range
-):
+@pytest.mark.parametrize("citation", ["valid", "unread_range", "unknown_file"])
+def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_path, citation):
     from autocoder.protocol import digest
 
     source = "".join(f"# line {i}\n" for i in range(160))
     with Fixture({"source.py": source, "helper.py": source}) as fixture:
         discovery_calls = 0
+        diagnostics = []
 
         async def transport(endpoint, model, messages, budget, **options):
             nonlocal discovery_calls
@@ -930,15 +929,18 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(
             frame = evidence["files"]["source.py"]
             assert frame["start"] == 140
             assert evidence["files"]["helper.py"]["start"] == 1
+            diagnostics.append(json.loads(messages[1]["content"]).get("diagnostic"))
             return answer(
                 {
                     "content": json.dumps(
                         {
                             "findings": [
                                 {
-                                    "path": "source.py",
-                                    "start": 150 if unobserved_range else 140,
-                                    "end": 151 if unobserved_range else 141,
+                                    "path": "other.py"
+                                    if citation == "unknown_file"
+                                    else "source.py",
+                                    "start": 150 if citation == "unread_range" else 140,
+                                    "end": 151 if citation == "unread_range" else 141,
                                     "summary": "Observed source",
                                 }
                             ],
@@ -948,9 +950,17 @@ def test_truncated_discovery_discards_calls_and_builds_validated_handoff(
             )
 
         controller = coordinator_for(fixture.repository, tmp_path, transport)
-        if unobserved_range:
+        if citation != "valid":
             with pytest.raises(ValueError, match="Invalid phase artifact"):
                 asyncio.run(controller.orient("Locate the defect"))
+            # The single repair attempt is told the real line count and the shown ranges.
+            assert diagnostics[0] is None and len(diagnostics) == 2
+            if citation == "unread_range":
+                for expected in ("source.py lines 150-151", "the file has 160 lines", "140-141"):
+                    assert expected in diagnostics[1], diagnostics[1]
+            else:
+                assert "other.py was not observed" in diagnostics[1], diagnostics[1]
+                assert "source.py" in diagnostics[1]
         else:
             findings = asyncio.run(controller.orient("Locate the defect"))
             assert findings.findings[0].start == 140

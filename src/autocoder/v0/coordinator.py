@@ -197,29 +197,40 @@ class Coordinator:
                 if stop_discovery:
                     break
 
+        def anchoring_problem(finding):
+            actual = evidence["files"].get(finding.path)
+            if not actual:
+                observed = ", ".join(sorted(evidence["files"]))
+                return f"{finding.path} was not observed; use one of: {observed}"
+            seen = [
+                (start, end)
+                for start, end, sha in self.gateway.reads.get(finding.path, [])
+                if sha == actual["sha256"]
+            ]
+            if any(start <= finding.start <= finding.end <= end for start, end in seen):
+                return None
+            length = actual.get("total_lines")
+            size = f"the file has {length} lines; " if length else ""
+            shown = ", ".join(dict.fromkeys(f"{start}-{end}" for start, end in seen[-4:]))
+            return (
+                f"{finding.path} lines {finding.start}-{finding.end}: {size}"
+                f"lines shown to you: {shown or 'none'}"
+            )
+
         def finalize(value):
             # The coordinator, not the model, supplies the base revision and each file digest.
-            # A finding must lie inside a range that was actually read at the file's
-            # current digest.
-            findings = []
-            for finding in value.findings:
-                actual = evidence["files"].get(finding.path)
-                reads = self.gateway.reads.get(finding.path, [])
-                if (
-                    not actual
-                    or finding.end < finding.start
-                    or not any(
-                        start <= finding.start <= finding.end <= end and sha == actual["sha256"]
-                        for start, end, sha in reads
-                    )
-                ):
-                    observed = ", ".join(f"{start}-{end}" for start, end, _ in reads[-4:])
-                    raise ValueError(
-                        "Orientation is not anchored to current source: "
-                        f"{finding.path} lines {finding.start}-{finding.end}; "
-                        f"observed lines {observed or 'none'}"
-                    )
-                findings.append(Finding(**finding.model_dump(), sha256=actual["sha256"]))
+            # A finding must lie inside a range that was actually read at the file's current
+            # digest; the repair message states the real line counts and shown ranges.
+            problems = list(dict.fromkeys(filter(None, map(anchoring_problem, value.findings))))
+            if problems:
+                raise ValueError(
+                    "Orientation is not anchored to current source. Cite only lines you were "
+                    "shown: " + "; ".join(problems[:6])
+                )
+            findings = [
+                Finding(**finding.model_dump(), sha256=evidence["files"][finding.path]["sha256"])
+                for finding in value.findings
+            ]
             return Orientation(base_sha=self.workspace.base_sha, findings=findings)
 
         return await self.structured(ModelOrientation, task, evidence, finalize=finalize)
