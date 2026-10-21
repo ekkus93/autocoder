@@ -895,3 +895,72 @@ def test_changed_public_failure_gets_focused_repair_before_replan(tmp_path):
         assert result["usage"]["repairs"] == 2
         journal = journal_for(project, result["task_id"])
         assert not any(r["kind"] == "REPLAN" for r in journal.read())
+
+
+@pytest.mark.parametrize("stale_handoff", [False, True])
+def test_truncated_discovery_discards_calls_and_builds_validated_handoff(tmp_path, stale_handoff):
+    source = "".join(f"# line {i}\n" for i in range(160))
+    with Fixture({"source.py": source, "helper.py": source}) as fixture:
+        discovery_calls = 0
+
+        async def transport(endpoint, model, messages, budget, **options):
+            nonlocal discovery_calls
+            if options.get("tools"):
+                discovery_calls += 1
+                assert discovery_calls <= 2
+                result = answer(
+                    {
+                        "content": "incomplete discovery" if discovery_calls == 2 else "read",
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "read_file_range",
+                                    "arguments": {
+                                        "path": "helper.py"
+                                        if discovery_calls == 2
+                                        else "source.py",
+                                        "start": 140,
+                                        "end": 141,
+                                    },
+                                }
+                            }
+                        ],
+                    }
+                )
+                result["truncated"] = discovery_calls == 2
+                return result
+            assert len(messages) == 2
+            assert "incomplete discovery" not in json.dumps(messages)
+            evidence = json.loads(messages[1]["content"])["evidence"]
+            frame = evidence["files"]["source.py"]
+            assert frame["start"] == 140
+            assert evidence["files"]["helper.py"]["start"] == 1
+            return answer(
+                {
+                    "content": json.dumps(
+                        {
+                            "base_sha": evidence["base_sha"],
+                            "findings": [
+                                {
+                                    "path": "source.py",
+                                    "sha256": "0" * 64 if stale_handoff else frame["sha256"],
+                                    "start": 140,
+                                    "end": 141,
+                                    "summary": "Observed source",
+                                }
+                            ],
+                        }
+                    )
+                }
+            )
+
+        controller = coordinator_for(fixture.repository, tmp_path, transport)
+        if stale_handoff:
+            with pytest.raises(ValueError, match="Invalid phase artifact"):
+                asyncio.run(controller.orient("Locate the defect"))
+        else:
+            findings = asyncio.run(controller.orient("Locate the defect"))
+            assert findings.findings[0].start == 140
+        rows = controller.journal.read()
+        assert len([r for r in rows if r["kind"] == "TOOL_CALL"]) == 1
+        assert len([r for r in rows if r["kind"] == "INCOMPLETE_RESPONSE"]) == 1

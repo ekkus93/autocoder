@@ -121,7 +121,18 @@ class Coordinator:
                         },
                     )
                     break
-                message = await self.model.request(messages, tools=self.gateway.tools(), output=768)
+                try:
+                    message = await self.model.request(
+                        messages, tools=self.gateway.tools(), output=768
+                    )
+                except IncompleteResponse:
+                    # Reject all calls from the incomplete reply, then validate a fresh
+                    # handoff using only source that was already observed successfully.
+                    self.journal.emit(
+                        "INCOMPLETE_RESPONSE",
+                        data={"action": "discard discovery response and build orientation handoff"},
+                    )
+                    break
                 calls = message.get("tool_calls") or []
                 if not calls:
                     break
