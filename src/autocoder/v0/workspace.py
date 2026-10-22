@@ -1,5 +1,6 @@
 """Retained branches, guarded atomic edits and reconciliation of durable intents."""
 
+import difflib
 import os
 import stat
 import subprocess
@@ -67,6 +68,54 @@ def safe_file(root, name, *, maximum=262144, text=True):
     if text and b"\x00" in data:
         raise NeedsUser("Binary source is not editable")
     return target, data
+
+
+def explain_edit_mismatch(source, old, matches):
+    """Say why `old` did not match exactly once, within the 512-character tool error cap."""
+    if matches > 1:
+        spots = []
+        offset = source.find(old)
+        while offset != -1 and len(spots) < 5:
+            spots.append(str(source.count("\n", 0, offset) + 1))
+            offset = source.find(old, offset + 1)
+        return (
+            f"Edit old text matches {matches} places (lines {', '.join(spots)}); "
+            "include more surrounding lines to make it unique"
+        )
+    wanted = [line.strip() for line in old.splitlines() if line.strip()]
+    if not wanted:
+        return "Edit old text has only blank lines; copy exact source lines"
+    lines = source.splitlines()
+
+    def report(first, last, reason):
+        text = "\n".join(lines[first - 1 : last])
+        text = text if len(text) <= 300 else text[:300] + "..."
+        return (
+            f"Edit old text not found exactly; it {reason} at lines {first}-{last}. Actual:\n{text}"
+        )
+
+    # Same non-blank lines, different blank lines or indentation: the common near miss.
+    code = [(number, line.strip()) for number, line in enumerate(lines, 1) if line.strip()]
+    for index in range(len(code) - len(wanted) + 1):
+        window = code[index : index + len(wanted)]
+        if [text for _, text in window] == wanted:
+            return report(window[0][0], window[-1][0], "differs only in blank lines or indentation")
+    # Otherwise offer the most similar region, if the file is small enough to scan cheaply.
+    size = len(old.splitlines())
+    if len(lines) <= 3000 and len(old) <= 2000 and 0 < size <= len(lines):
+        target = "\n".join(line.strip() for line in old.splitlines())
+        best, region = 0.0, None
+        for first in range(len(lines) - size + 1):
+            matcher = difflib.SequenceMatcher(
+                None, "\n".join(line.strip() for line in lines[first : first + size]), target
+            )
+            if matcher.real_quick_ratio() > best and matcher.quick_ratio() > best:
+                ratio = matcher.ratio()
+                if ratio > best:
+                    best, region = ratio, first + 1
+        if region is not None and best >= 0.6:
+            return report(region, region + size - 1, "is most similar to the source")
+    return "Edit old text not found; re-read the file and copy exact lines"
 
 
 class Workspace:
@@ -217,8 +266,10 @@ class Workspace:
         if digest(data) != edit.expected_sha256:
             raise ValueError("Stale edit hash; retrieve current source")
         source = data.decode("utf-8")
-        if not edit.old or source.count(edit.old) != 1:
-            raise ValueError("Edit requires exactly one nonempty match")
+        if not edit.old:
+            raise ValueError("Edit old text must not be empty")
+        if (matches := source.count(edit.old)) != 1:
+            raise ValueError(explain_edit_mismatch(source, edit.old, matches))
         replacement = source.replace(edit.old, edit.new, 1).encode()
         if edit.path not in self.project.approved_test_paths:
             preserve_inline_tests(source, replacement.decode())

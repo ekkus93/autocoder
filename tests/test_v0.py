@@ -751,3 +751,69 @@ def test_model_handoffs_omit_fields_the_coordinator_supplies():
     assert Plan(base_sha="a" * 40, **plan).base_sha == "a" * 40
     assert "base_sha" not in ModelPlan.model_json_schema()["properties"]
     assert "base_sha" not in ModelOrientation.model_json_schema()["properties"]
+
+
+MODULE = (
+    '"""Money helpers."""\n'
+    "\n"
+    "\n"
+    "def format_cents(cents):\n"
+    "    dollars, remainder = divmod(cents, 100)\n"
+    '    return f"${dollars}.{remainder}"\n'
+    "\n"
+    "\n"
+    "def other():\n"
+    "    return 1\n"
+)
+
+
+def test_edit_mismatch_explains_blank_line_and_indentation_differences():
+    from autocoder.v0.workspace import explain_edit_mismatch
+
+    blank = '"""Money helpers."""\n\ndef format_cents(cents):\n'
+    message = explain_edit_mismatch(MODULE, blank, MODULE.count(blank))
+    assert "differs only in blank lines or indentation at lines 1-4" in message
+    assert message.endswith('"""Money helpers."""\n\n\ndef format_cents(cents):')
+    unindented = "def format_cents(cents):\ndollars, remainder = divmod(cents, 100)\n"
+    message = explain_edit_mismatch(MODULE, unindented, MODULE.count(unindented))
+    assert "lines 4-5" in message and "    dollars, remainder" in message
+    assert max(len(message), len(explain_edit_mismatch(MODULE, blank, 0))) <= 512
+
+
+def test_edit_mismatch_reports_ambiguity_similarity_and_misses():
+    from autocoder.v0.workspace import explain_edit_mismatch
+
+    twice = "    return"
+    message = explain_edit_mismatch(MODULE, twice, MODULE.count(twice))
+    assert "matches 2 places (lines 6, 10)" in message
+    near = "def format_cent(cents):\n    dollars, remainder = divmod(cents, 100)\n"
+    message = explain_edit_mismatch(MODULE, near, 0)
+    assert "most similar to the source at lines 4-5" in message and "format_cents" in message
+    assert "not found; re-read" in explain_edit_mismatch(MODULE, "zebra\nquux\nnothing\n", 0)
+    assert "only blank lines" in explain_edit_mismatch(MODULE, "\n\n", 0)
+
+
+def test_edit_mismatch_text_is_bounded_for_large_regions():
+    from autocoder.v0.workspace import explain_edit_mismatch
+
+    body = "".join(f"    value_{i} = {i}\n" for i in range(200))
+    source = "def big():\n" + body + "\n"
+    wrong = "def big():\n" + body.replace("    ", "  ") + "\n"
+    message = explain_edit_mismatch(source, wrong, 0)
+    assert "lines 1-201" in message and message.endswith("...") and len(message) < 512
+
+
+def test_failed_edit_returns_the_specific_reason_to_the_model(tmp_path):
+    with Fixture({"greeting.py": SOURCE}) as fixture:
+        project = project_for(fixture.repository, tmp_path)
+        _, workspace = task(project)
+        edit = Edit(
+            path="greeting.py",
+            old='def greet(name):\nreturn "Hello!"\n',
+            new="def greet(name):\n    return name\n",
+            expected_sha256=digest(SOURCE.encode()),
+        )
+        with pytest.raises(ValueError, match="differs only in blank lines or indentation"):
+            workspace.edit(edit)
+        with pytest.raises(ValueError, match="must not be empty"):
+            workspace.edit(edit.model_copy(update={"old": ""}))
